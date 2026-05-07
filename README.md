@@ -1,8 +1,8 @@
 # Portable Offline AI Kit
 
-> Build a USB stick that runs a 7-billion-parameter language model on any
-> Windows / macOS / Linux laptop, with no install, no internet, no GPU, no
-> Python, no Docker, no telemetry. Plug in, double-click, chat.
+> Build a USB stick that runs a real Gemma 4 LLM on any Windows / macOS /
+> Linux laptop, with no install, no internet, no GPU, no Python, no Docker,
+> no telemetry. Plug in, double-click, chat.
 
 Two Gemma 4 models (a 5 GB daily-driver and a 17 GB Mixture-of-Experts), a
 43 MB [llamafile](https://github.com/Mozilla-Ocho/llamafile) runtime, three
@@ -74,7 +74,7 @@ assembles the full USB layout for you. You supply the USB and the bandwidth
 
 You're somewhere with no signal. Maybe the WiFi died. Maybe the router died. Maybe **the internet died**. You still have a laptop and a USB stick.
 
-You plug the stick in. Double-click one file. Thirty seconds later you're chatting with a 7-billion-parameter language model that can:
+You plug the stick in. Double-click one file. Thirty seconds later you're chatting with a Gemma 4 language model — 4.5 B parameters in the daily-driver, or 26 B (3.8 B active) in the Mixture-of-Experts — that can:
 
 - 🩹 Talk you through a wound dressing
 - 🔧 Walk you through fixing a generator
@@ -181,8 +181,8 @@ Three weights ship with the kit. Two appear in the launcher menu; the third is f
 
 | Callsign | Size | RAM | Speed (CPU) | Quant | Role | Status |
 |---|---|---|---|---|---|---|
-| **GEMMA-4 / E4B** | 5.0 GB | ≥ 8 GB | ~15 t/s | `Q4_K_M` | Daily driver. Chat, code, summaries, translation. Good enough for ~95% of normal questions. | `🟢 FIELD READY` |
-| **GEMMA-4 / 26B-A4B** | 17 GB | ≥ 18 GB | ~10 t/s | `UD-Q4_K_M` (MoE) | Mixture-of-Experts. Stronger reasoning, longer-context recall. 3.8 B params active per token, so faster than its file size suggests. | `🟡 HEAVY ORDNANCE` |
+| **GEMMA-4 / E4B** | 5.0 GB | ≥ 8 GB | ~15 t/s | `Q4_K_M` | Daily driver — **4.5 B effective parameters** (8 B with embeddings). Chat, code, summaries, translation. Good enough for ~95% of normal questions. | `🟢 FIELD READY` |
+| **GEMMA-4 / 26B-A4B** | 17 GB | ≥ 18 GB | ~10 t/s | `UD-Q4_K_M` (MoE) | Mixture-of-Experts — **26 B total / 3.8 B active per token**. Stronger reasoning and longer-context recall, faster than its file size suggests. | `🟡 HEAVY ORDNANCE` |
 | **EMBEDGEMMA / 300M** | 329 MB | minimal | n/a | `Q8 QAT` | Sentence embeddings for RAG. Future tools will use it to chat with documents. Not in the launcher menu. | `🤍 QUARTERMASTER` |
 
 All weights are quantized via [unsloth](https://huggingface.co/unsloth) (Apache 2.0). The runtime is [llamafile 0.10.1](https://github.com/Mozilla-Ocho/llamafile) (Mozilla, Apache 2.0). The base Gemma 4 weights are subject to [Google's Gemma terms](https://ai.google.dev/gemma/terms).
@@ -350,7 +350,7 @@ A few hard-earned lessons from building this:
 
 > **Boring beats clever.** We tried the elegant single-file `.llamafile` bundle. It failed on Windows. The "boring" pattern (runtime + bare weights + launcher script) works on every host we've tested. Boring won.
 
-> **Offline doesn't mean obsolete.** A 7B model from 2026, run on a $200 laptop, would have been a research demo five years ago. Today it fits on a USB stick and answers most "I have a question" queries faster than typing the question into Google.
+> **Offline doesn't mean obsolete.** A multi-billion-parameter open-weight model from 2026, run on a $200 laptop, would have been a research demo five years ago. Today it fits on a USB stick and answers most "I have a question" queries faster than typing the question into Google.
 
 > **Plan for the cache miss.** USB is 3-4× slower than local SSD for model loading. Build the launcher to be polite about that ("Loading the E4B model from USB. About 15-30 seconds.") instead of leaving the user staring at a black window.
 
