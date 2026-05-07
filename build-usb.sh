@@ -106,8 +106,8 @@ cp "$REPO/launchers/start.bat"     "$TARGET/start.bat"
 cp "$REPO/launchers/start.command" "$TARGET/start.command"
 cp "$REPO/launchers/start.sh"      "$TARGET/start.sh"
 chmod +x "$TARGET/start.command" "$TARGET/start.sh"
-cp "$REPO/index.html"  "$TARGET/index.html"
-cp "$REPO/README.txt"  "$TARGET/README.txt"
+cp "$REPO/dashboard/index.html"  "$TARGET/index.html"
+cp "$REPO/dashboard/README.txt"  "$TARGET/README.txt"
 
 echo
 echo "------------------------------------------------------------"

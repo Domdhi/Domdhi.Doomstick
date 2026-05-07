@@ -98,10 +98,14 @@ This is a recipe — large binary artifacts (model weights, ISOs) live upstream 
 .
 ├── build-usb.sh / .ps1     One-shot script: fetch + assemble USB layout
 ├── launchers/              start.{bat,command,sh} — the model-picker menu
+├── dashboard/              Web assets that deploy to USB root
+│   ├── index.html              Static dashboard
+│   └── README.txt              Plain-text version of this doc
+├── args/                   Flag reference (mirrored into launchers; doesn't deploy)
+│   ├── e4b.args
+│   └── 26b.args
 ├── usb-layout/             Empty skeleton showing the target USB structure
-├── e4b.args / 26b.args     Source-of-truth flag list (mirrored in launchers)
-├── index.html              Static dashboard (deploys to USB root)
-├── README.txt              Plain-text version of this doc (deploys to USB root)
+├── LICENSE                 Apache-2.0
 └── README.md               This file
 ```
 
@@ -270,7 +274,7 @@ USB=/mnt/usb
 mkdir -p "$USB/ai-kit"
 cp -r runtime models "$USB/ai-kit/"
 cp launchers/start.bat launchers/start.command launchers/start.sh "$USB/"
-cp index.html README.txt "$USB/"
+cp dashboard/index.html dashboard/README.txt "$USB/"
 ```
 
 For smoke tests, the WSL `sh ./runtime/llamafile` quirk, and other operational notes, see §08 (Casualty Report) below.
@@ -379,8 +383,6 @@ Built on the shoulders of giants who decided portability mattered:
 - **[Google](https://ai.google.dev/gemma)** — Gemma 4 weights and EmbeddingGemma (Apache 2.0, plus [Gemma terms](https://ai.google.dev/gemma/terms)).
 - **[Kiwix](https://kiwix.org)** & **[Ventoy](https://www.ventoy.net/)** — the offline-knowledge and bootable-USB stack we crib from.
 
-In the broader portable-AI ecosystem, see also [techjarves/Portable-AI-USB](https://github.com/techjarves/Portable-AI-USB) (Ollama + AnythingLLM, runs from USB but requires extraction to host) and [Project NOMAD](https://www.projectnomad.us/) (offline AI + Wikipedia + Kolibri server, requires Ubuntu/Debian install). This kit's niche is **zero-install, zero-runtime-download, fully USB-resident** — none of the others reach all three at once.
-
 <br>
 
 ## 📜 §13 · Legal
@@ -406,17 +408,14 @@ Embedded artifacts retain their upstream licenses:
 <div align="center">
 
 ```
-                          _.-^^---....,,--_
-                      _--                  --_
-                     <                        >)
-                     |                         |
-                      \._                   _./
-                         ```--. . , ; .--'''
-                               | |   |
-                            .-=||  | |=-.
-                            `-=#$%&%$#=-'
-                               | ;  :|
-                      _____.,-#%&$@%#&#~,._____
+                      _ ._  _ , _ ._
+                    (_ ' ( `  )_  .__)
+                  ( (  (    )   `)  ) _)
+                 (__ (_   (_ . _) _) ,__)
+                     `~~`\ ' . /`~~`
+                          ;   ;
+                          /   \
+_________________________/_ __ \_____________
 ```
 
 ```

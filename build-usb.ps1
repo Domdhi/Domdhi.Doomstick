@@ -114,8 +114,8 @@ Write-Host '==> launchers + dashboard'
 Copy-Item -LiteralPath (Join-Path $Repo 'launchers\start.bat')     -Destination (Join-Path $Target 'start.bat')     -Force
 Copy-Item -LiteralPath (Join-Path $Repo 'launchers\start.command') -Destination (Join-Path $Target 'start.command') -Force
 Copy-Item -LiteralPath (Join-Path $Repo 'launchers\start.sh')      -Destination (Join-Path $Target 'start.sh')      -Force
-Copy-Item -LiteralPath (Join-Path $Repo 'index.html')              -Destination (Join-Path $Target 'index.html')    -Force
-Copy-Item -LiteralPath (Join-Path $Repo 'README.txt')              -Destination (Join-Path $Target 'README.txt')    -Force
+Copy-Item -LiteralPath (Join-Path $Repo 'dashboard\index.html')    -Destination (Join-Path $Target 'index.html')    -Force
+Copy-Item -LiteralPath (Join-Path $Repo 'dashboard\README.txt')    -Destination (Join-Path $Target 'README.txt')    -Force
 
 Write-Host ''
 Write-Host '------------------------------------------------------------'

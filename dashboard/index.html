@@ -509,8 +509,12 @@ section {
   border: none;
   border-bottom: 4px solid var(--rad-deep);
   cursor: pointer;
-  transition: transform 0.08s ease, background 0.15s ease, border-color 0.15s ease;
+  transition: transform 0.08s ease, background 0.15s ease, border-color 0.15s ease, color 0.15s ease;
   position: relative;
+  /* button reset (in case rendered as <button>) */
+  appearance: none;
+  -webkit-appearance: none;
+  font-family: var(--font-stencil); /* re-assert; some browsers reset font on button */
 }
 .terminal-action::before {
   content: "▸  ";
@@ -520,6 +524,22 @@ section {
   background: var(--paper);
   border-bottom-color: var(--rust-edge);
   color: var(--void);
+}
+.terminal-action.copied {
+  background: var(--phos);
+  border-bottom-color: var(--phos-deep);
+  color: var(--void);
+}
+.terminal-action.copied::before {
+  content: "✓  ";
+}
+.terminal-action.fail {
+  background: var(--blood);
+  border-bottom-color: var(--blood-deep);
+  color: var(--paper);
+}
+.terminal-action.fail::before {
+  content: "✗  ";
 }
 .terminal-action:active {
   transform: translateY(3px);
@@ -954,25 +974,25 @@ footer {
     <article class="terminal">
       <span class="terminal-tag">▸ NODE-WIN</span>
       <h3 class="terminal-name">Windows</h3>
-      <p class="terminal-desc">Double-click <code>start.bat</code> in File Explorer. Launcher pops a model menu and runs minimized in the taskbar. Press any key to terminate.</p>
-      <code class="terminal-cmd">D:\start.bat</code>
-      <a class="terminal-action" href="start.bat">Initiate</a>
+      <p class="terminal-desc">Double-click <code>start.bat</code> in File Explorer — easiest. Or hit the button below to copy its path, then paste into the address bar / <code>Win+R</code> Run.</p>
+      <code class="terminal-cmd" data-cmd-for="start.bat">start.bat</code>
+      <button class="terminal-action" type="button" data-copy-path="start.bat">Copy Path</button>
     </article>
 
     <article class="terminal">
       <span class="terminal-tag">▸ NODE-MAC</span>
       <h3 class="terminal-name">macOS</h3>
-      <p class="terminal-desc">Double-click <code>start.command</code> in Finder. First run may need <em>Right-Click&nbsp;→&nbsp;Open</em> to bypass Gatekeeper.</p>
-      <code class="terminal-cmd">/Volumes/USB/start.command</code>
-      <a class="terminal-action" href="start.command">Initiate</a>
+      <p class="terminal-desc">Double-click <code>start.command</code> in Finder. First run may need <em>Right-Click&nbsp;→&nbsp;Open</em> to bypass Gatekeeper. Or copy the path and run it from Terminal.</p>
+      <code class="terminal-cmd" data-cmd-for="start.command">start.command</code>
+      <button class="terminal-action" type="button" data-copy-path="start.command">Copy Path</button>
     </article>
 
     <article class="terminal">
       <span class="terminal-tag">▸ NODE-NIX</span>
       <h3 class="terminal-name">Linux</h3>
-      <p class="terminal-desc">Run from a terminal. WSL works too — the launcher prepends <code>sh</code> to dodge APE interception.</p>
-      <code class="terminal-cmd">$ ./start.sh</code>
-      <a class="terminal-action" href="start.sh">Initiate</a>
+      <p class="terminal-desc">Run from a terminal. WSL works too — the launcher prepends <code>sh</code> to dodge APE interception. Copy the path and paste at the prompt.</p>
+      <code class="terminal-cmd" data-cmd-for="start.sh">./start.sh</code>
+      <button class="terminal-action" type="button" data-copy-path="start.sh">Copy Path</button>
     </article>
 
   </div>
@@ -993,6 +1013,7 @@ footer {
       </header>
       <div class="weapon-body">
         <dl class="weapon-specs">
+          <dt>PARAMS</dt><dd>4.5 B effective · 8 B w/ emb.</dd>
           <dt>SIZE</dt><dd>5.0 GB</dd>
           <dt>RAM&nbsp;MIN</dt><dd>≥ 8 GB</dd>
           <dt>SPEED</dt><dd>~15 t/s on CPU</dd>
@@ -1010,12 +1031,13 @@ footer {
       </header>
       <div class="weapon-body">
         <dl class="weapon-specs">
+          <dt>PARAMS</dt><dd>26 B total · 3.8 B active</dd>
           <dt>SIZE</dt><dd>17.0 GB</dd>
           <dt>RAM&nbsp;MIN</dt><dd>≥ 18 GB</dd>
           <dt>SPEED</dt><dd>~10 t/s on CPU</dd>
           <dt>QUANT</dt><dd>UD-Q4_K_M · MoE</dd>
         </dl>
-        <p class="weapon-brief">Mixture-of-Experts. Stronger reasoning and longer-context recall. 3.8 B params active per token, so faster than its size suggests.</p>
+        <p class="weapon-brief">Mixture-of-Experts. Stronger reasoning and longer-context recall — only the active experts run per token, so it's faster than its file size suggests.</p>
         <span class="stamp amber">HEAVY&nbsp;ORDNANCE</span>
       </div>
     </article>
@@ -1027,6 +1049,7 @@ footer {
       </header>
       <div class="weapon-body">
         <dl class="weapon-specs">
+          <dt>PARAMS</dt><dd>300 M</dd>
           <dt>SIZE</dt><dd>329 MB</dd>
           <dt>QUANT</dt><dd>Q8 QAT</dd>
           <dt>OUTPUT</dt><dd>768-dim vectors</dd>
@@ -1183,6 +1206,101 @@ footer {
 
   ping();
   setInterval(ping, 6000);
+})();
+
+/* Copy-path buttons.
+ * Browsers won't actually run a .bat / .command / .sh from an <a href> click
+ * (they download or trigger a security warning), so the dashboard's launcher
+ * cards instead expose a button that copies the file's resolved on-disk path
+ * to the clipboard. Paste into File Explorer's address bar / Win+R Run /
+ * Terminal to launch.
+ */
+(function () {
+  // Convert a file:// URL to a host-friendly absolute path.
+  // Windows file:// URLs look like "file:///D:/start.bat" → "D:\start.bat".
+  // POSIX URLs already give "/Volumes/USB/..." or "/mnt/usb/..." cleanly.
+  function nativePath(filename) {
+    var url = new URL(filename, window.location.href);
+    if (url.protocol !== 'file:') {
+      // Served over http/https — the dashboard isn't on the user's filesystem,
+      // so a "copy path" we can't compute. Fall back to the bare filename.
+      return filename;
+    }
+    var path = decodeURIComponent(url.pathname);
+    if (/^\/[A-Za-z]:[\\/]/.test(path)) {
+      path = path.slice(1).replace(/\//g, '\\');
+    }
+    return path;
+  }
+
+  // Update each .terminal-cmd block to show the actual on-disk path.
+  document.querySelectorAll('.terminal-cmd[data-cmd-for]').forEach(function (el) {
+    var name = el.dataset.cmdFor;
+    var path = nativePath(name);
+    // Linux convention: prefix with "$ ./" if the path is relative,
+    // otherwise show the full path.
+    if (name.endsWith('.sh') && path === name) {
+      el.textContent = '$ ./' + name;
+    } else {
+      el.textContent = path;
+    }
+  });
+
+  function copyText(text) {
+    if (navigator.clipboard && navigator.clipboard.writeText) {
+      return navigator.clipboard.writeText(text).then(function () { return true; },
+                                                      function () { return false; });
+    }
+    // Legacy fallback — execCommand('copy') on a hidden textarea.
+    return new Promise(function (resolve) {
+      var ta = document.createElement('textarea');
+      ta.value = text;
+      ta.setAttribute('readonly', '');
+      ta.style.position = 'fixed';
+      ta.style.opacity = '0';
+      ta.style.pointerEvents = 'none';
+      document.body.appendChild(ta);
+      ta.select();
+      var ok = false;
+      try { ok = document.execCommand('copy'); } catch (_) { ok = false; }
+      document.body.removeChild(ta);
+      resolve(ok);
+    });
+  }
+
+  function flash(btn, cls, label, ms) {
+    var orig = btn.dataset.origLabel || btn.textContent;
+    btn.dataset.origLabel = orig;
+    btn.classList.add(cls);
+    btn.textContent = label;
+    setTimeout(function () {
+      btn.classList.remove(cls);
+      btn.textContent = orig;
+    }, ms || 1600);
+  }
+
+  document.querySelectorAll('.terminal-action[data-copy-path]').forEach(function (btn) {
+    btn.addEventListener('click', function (e) {
+      e.preventDefault();
+      var path = nativePath(btn.dataset.copyPath);
+      copyText(path).then(function (ok) {
+        flash(btn, ok ? 'copied' : 'fail', ok ? 'Copied' : 'Select & Copy', ok ? 1600 : 2400);
+        if (!ok) {
+          // Last-resort fallback: select the visible terminal-cmd block so
+          // the user can manually Ctrl-C / Cmd-C.
+          var card = btn.closest('.terminal');
+          var cmd  = card && card.querySelector('.terminal-cmd');
+          if (cmd && window.getSelection) {
+            var range = document.createRange();
+            range.selectNodeContents(cmd);
+            var sel = window.getSelection();
+            sel.removeAllRanges();
+            sel.addRange(range);
+          }
+        }
+      });
+    });
+  });
 })();
 </script>
 
