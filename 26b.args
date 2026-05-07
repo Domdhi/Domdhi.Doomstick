@@ -1,0 +1,10 @@
+-m
+models/gemma-4-26B-A4B-it-UD-Q4_K_M.gguf
+--server
+--host
+127.0.0.1
+--port
+8765
+-c
+8192
+...

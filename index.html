@@ -1,0 +1,1190 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>DOOMSTICK · Offline Emergency Assistance Network</title>
+<meta name="description" content="Portable offline AI kit. Two Gemma 4 models on a USB. Plug in, double-click, chat. No internet, no install, no GPU.">
+
+<!-- Online fonts. For fully air-gapped USBs, replace with self-hosted .woff2 files. -->
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Big+Shoulders+Stencil+Display:wght@700;800;900&family=Special+Elite&family=JetBrains+Mono:wght@400;500;700&family=VT323&display=swap" rel="stylesheet">
+
+<style>
+/* ============================================================
+   DOOMSTICK · stylesheet
+   palette · void / paper / hazard yellow / phosphor / blood
+   typography · stencil headers, typewriter narrative, CRT data
+   ============================================================ */
+
+:root {
+  --void:        #0a0a08;
+  --ink:         #110f0b;
+  --asphalt:     #16140e;
+  --steel:       #1f1d16;
+  --rust-edge:   #4a3a1d;
+  --rust-deep:   #2a2010;
+
+  --paper:       #ece2c8;
+  --bone:        #c8bea2;
+  --bone-dim:    #8a8068;
+
+  --rad:         #fcd000;          /* hazard yellow */
+  --rad-deep:    #c8a000;
+  --rad-shadow:  rgba(252,208,0,0.18);
+  --rad-dim:     #6e5a08;
+
+  --blood:       #c63d2f;
+  --blood-deep:  #8a2a20;
+
+  --phos:        #6df54a;
+  --phos-deep:   #2d6d22;
+  --phos-shadow: rgba(109,245,74,0.22);
+
+  --font-stencil: "Big Shoulders Stencil Display", "Stencil Std", "Impact", sans-serif;
+  --font-display: "Special Elite", "Courier Prime", "Courier New", monospace;
+  --font-body:    "JetBrains Mono", "Cascadia Code", "Consolas", "SF Mono", "Menlo", monospace;
+  --font-crt:     "VT323", "Lucida Console", "Courier New", monospace;
+}
+
+* { box-sizing: border-box; }
+
+html, body {
+  margin: 0;
+  padding: 0;
+  background: var(--void);
+  color: var(--paper);
+}
+
+body {
+  font-family: var(--font-body);
+  font-size: 14px;
+  line-height: 1.6;
+  min-height: 100vh;
+  overflow-x: hidden;
+
+  /* Subtle film grain + a hint of yellow/red atmospheric tint */
+  background-color: var(--void);
+  background-image:
+    url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='180' height='180'><filter id='n'><feTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='2' stitchTiles='stitch'/><feColorMatrix values='0 0 0 0 0  0 0 0 0 0  0 0 0 0 0  0 0 0 0.07 0'/></filter><rect width='100%25' height='100%25' filter='url(%23n)'/></svg>"),
+    radial-gradient(ellipse at 18% 0%, rgba(252,208,0,0.03), transparent 45%),
+    radial-gradient(ellipse at 88% 100%, rgba(198,61,47,0.025), transparent 50%);
+  background-attachment: fixed;
+}
+
+/* CRT scanlines — subtle, fixed overlay */
+body::before {
+  content: "";
+  position: fixed;
+  inset: 0;
+  background-image: repeating-linear-gradient(
+    to bottom,
+    transparent 0,
+    transparent 2px,
+    rgba(0,0,0,0.18) 2px,
+    rgba(0,0,0,0.18) 3px
+  );
+  pointer-events: none;
+  z-index: 1000;
+  mix-blend-mode: multiply;
+}
+
+/* Vignette */
+body::after {
+  content: "";
+  position: fixed;
+  inset: 0;
+  box-shadow: inset 0 0 240px rgba(0,0,0,0.8);
+  pointer-events: none;
+  z-index: 999;
+}
+
+/* Selection */
+::selection { background: var(--rad); color: var(--void); }
+
+/* Default link */
+a { color: var(--rad); text-decoration: none; }
+a:hover { color: var(--paper); }
+
+code {
+  font-family: var(--font-crt);
+  background: var(--void);
+  color: var(--phos);
+  padding: 0 6px;
+  font-size: 1.08em;
+  border-left: 2px solid var(--phos-deep);
+}
+
+/* ===== EMERGENCY BROADCAST BAR =================================== */
+
+.ebs {
+  position: relative;
+  background: var(--void);
+}
+
+.ebs-stripes {
+  height: 14px;
+  background: repeating-linear-gradient(
+    -45deg,
+    var(--rad) 0 14px,
+    var(--void) 14px 28px
+  );
+}
+
+.ebs-bar {
+  display: flex;
+  align-items: center;
+  gap: 20px;
+  padding: 12px 28px;
+  background: var(--void);
+  border-top: 1px solid var(--rad-dim);
+  border-bottom: 1px solid var(--rad-dim);
+  font-family: var(--font-display);
+  text-transform: uppercase;
+  letter-spacing: 0.18em;
+  color: var(--rad);
+  font-size: 12px;
+}
+
+.ebs-mark {
+  font-size: 22px;
+  filter: drop-shadow(0 0 8px var(--rad-shadow));
+  line-height: 1;
+}
+
+.ebs-title {
+  flex: 1;
+  text-align: center;
+}
+
+.ebs-meta {
+  font-family: var(--font-body);
+  font-size: 11px;
+  color: var(--bone);
+  letter-spacing: 0.12em;
+  white-space: nowrap;
+}
+
+/* ===== HERO ====================================================== */
+
+.hero {
+  max-width: 1240px;
+  margin: 0 auto;
+  padding: 64px 36px 32px;
+  display: grid;
+  grid-template-columns: 1fr auto;
+  gap: 56px;
+  align-items: center;
+  position: relative;
+}
+
+.hero-glyph {
+  width: 220px;
+  height: 220px;
+  flex-shrink: 0;
+  filter: drop-shadow(0 0 28px var(--rad-shadow));
+  animation: glow 4s ease-in-out infinite;
+}
+
+@keyframes glow {
+  0%, 100% { filter: drop-shadow(0 0 22px var(--rad-shadow)); }
+  50%      { filter: drop-shadow(0 0 44px rgba(252,208,0,0.45)); }
+}
+
+.title-block {
+  position: relative;
+  min-width: 0;
+}
+
+.callout-bar {
+  display: flex;
+  gap: 14px;
+  margin-bottom: 14px;
+  font-family: var(--font-crt);
+  font-size: 16px;
+  letter-spacing: 0.14em;
+  color: var(--bone-dim);
+  text-transform: uppercase;
+}
+
+.callout-bar .sep { color: var(--rust-edge); }
+.callout-bar .live { color: var(--rad); }
+
+h1.doomstick {
+  font-family: var(--font-stencil);
+  font-weight: 900;
+  font-size: clamp(64px, 12vw, 168px);
+  line-height: 0.88;
+  margin: 0;
+  color: var(--paper);
+  letter-spacing: -0.005em;
+  position: relative;
+  text-transform: none;
+  /* faint chromatic offset — RGB drift like a knackered CRT */
+  text-shadow:
+    1px 0 0 var(--blood),
+   -1px 0 0 var(--phos);
+}
+
+.doomstick-tagline {
+  margin: 18px 0 0;
+  font-family: var(--font-display);
+  color: var(--rad);
+  font-size: 14px;
+  letter-spacing: 0.28em;
+  text-transform: uppercase;
+}
+
+.doomstick-tagline::before { content: "▸ "; color: var(--paper); }
+
+.quotation {
+  margin: 22px 0 0;
+  max-width: 560px;
+  font-family: var(--font-display);
+  color: var(--bone);
+  font-size: 15px;
+  line-height: 1.75;
+  border-left: 3px solid var(--rad-dim);
+  padding: 4px 0 4px 18px;
+}
+
+.quotation .attribution {
+  display: block;
+  margin-top: 8px;
+  font-size: 11px;
+  color: var(--bone-dim);
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+}
+
+/* status rack — three little LEDs that read like a hardware panel */
+.status-rack {
+  margin-top: 30px;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px 24px;
+  font-family: var(--font-crt);
+  font-size: 19px;
+  color: var(--bone);
+  letter-spacing: 0.04em;
+}
+
+.status {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.led {
+  width: 11px;
+  height: 11px;
+  border-radius: 50%;
+  flex: 0 0 11px;
+  display: inline-block;
+  box-shadow: 0 0 8px currentColor, inset 0 0 4px rgba(0,0,0,0.5);
+}
+
+.led.red    { background: var(--blood); color: var(--blood); animation: pulse-slow 2.4s steps(1) infinite; }
+.led.amber  { background: var(--rad);   color: var(--rad);   }
+.led.green  { background: var(--phos);  color: var(--phos);  animation: pulse-fast 1.4s steps(1) infinite; }
+.led.dark   { background: var(--rust-deep); color: var(--rust-deep); box-shadow: inset 0 0 4px rgba(0,0,0,0.7); }
+
+@keyframes pulse-fast { 0%,70% { opacity: 1; } 71%,100% { opacity: 0.3; } }
+@keyframes pulse-slow { 0%,55% { opacity: 1; } 56%,100% { opacity: 0.45; } }
+
+.status .label {
+  color: var(--bone);
+}
+
+.status .read {
+  color: var(--bone-dim);
+}
+
+.status[data-state="lost"]    .read { color: var(--blood); }
+.status[data-state="armed"]   .read { color: var(--phos); }
+.status[data-state="usb"]     .read { color: var(--rad); }
+.status[data-state="standby"] .read { color: var(--bone-dim); }
+
+/* ===== HAZARD DIVIDERS =========================================== */
+
+.hazard-divider {
+  height: 14px;
+  background: repeating-linear-gradient(
+    -45deg,
+    var(--rad) 0 14px,
+    var(--void) 14px 28px
+  );
+  margin: 24px 0 0;
+}
+
+.thin-divider {
+  height: 1px;
+  background: repeating-linear-gradient(
+    to right,
+    var(--rust-edge) 0 8px,
+    transparent 8px 14px
+  );
+  margin: 22px 0;
+}
+
+/* ===== MAIN ====================================================== */
+
+main {
+  max-width: 1240px;
+  margin: 0 auto;
+  padding: 56px 36px 32px;
+}
+
+section {
+  margin-bottom: 72px;
+}
+
+.section-title {
+  font-family: var(--font-stencil);
+  font-weight: 800;
+  font-size: 30px;
+  letter-spacing: 0.06em;
+  color: var(--paper);
+  margin: 0 0 4px;
+  display: flex;
+  align-items: baseline;
+  gap: 20px;
+  line-height: 1;
+}
+
+.section-title .num {
+  font-family: var(--font-crt);
+  font-size: 22px;
+  color: var(--rad);
+  letter-spacing: 0;
+  font-weight: normal;
+  line-height: 1;
+}
+
+.section-lede {
+  font-family: var(--font-display);
+  color: var(--bone);
+  font-size: 15px;
+  max-width: 760px;
+  margin: 12px 0 28px;
+  padding-bottom: 18px;
+  border-bottom: 1px dashed var(--rust-edge);
+}
+
+/* ===== BRIEFING (TRANSMISSION) =================================== */
+
+.briefing {
+  background: var(--asphalt);
+  border: 1px solid var(--rust-edge);
+  border-left: 3px solid var(--rad);
+  padding: 28px 30px;
+  position: relative;
+  font-family: var(--font-display);
+  color: var(--bone);
+  line-height: 1.85;
+  font-size: 15px;
+}
+
+.briefing::before {
+  content: "INCOMING TRANSMISSION";
+  position: absolute;
+  top: -10px;
+  left: 24px;
+  background: var(--void);
+  padding: 2px 12px;
+  font-family: var(--font-display);
+  font-size: 11px;
+  color: var(--rad);
+  letter-spacing: 0.26em;
+}
+
+.briefing strong { color: var(--paper); font-weight: normal; border-bottom: 1px dotted var(--rad-dim); }
+
+.briefing .signoff {
+  display: block;
+  margin-top: 16px;
+  font-family: var(--font-crt);
+  font-size: 16px;
+  color: var(--bone-dim);
+  letter-spacing: 0.1em;
+}
+
+/* ===== GRID ====================================================== */
+
+.grid {
+  display: grid;
+  gap: 18px;
+}
+
+.grid-3 { grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); }
+.grid-2 { grid-template-columns: repeat(auto-fit, minmax(320px, 1fr)); }
+
+/* ===== TERMINAL CARD (launchers) ================================= */
+
+.terminal {
+  position: relative;
+  background: var(--asphalt);
+  border: 1px solid var(--rust-edge);
+  padding: 26px 26px 28px;
+  display: flex;
+  flex-direction: column;
+  transition: transform 0.18s ease, border-color 0.18s ease, background 0.18s ease;
+}
+
+.terminal::before, .terminal::after {
+  content: "";
+  position: absolute;
+  width: 22px;
+  height: 22px;
+  pointer-events: none;
+  transition: border-color 0.18s ease;
+}
+.terminal::before {
+  top: -1px; left: -1px;
+  border-top: 2px solid var(--rad);
+  border-left: 2px solid var(--rad);
+}
+.terminal::after {
+  bottom: -1px; right: -1px;
+  border-bottom: 2px solid var(--rad);
+  border-right: 2px solid var(--rad);
+}
+.terminal:hover {
+  transform: translate(-2px, -2px);
+  background: var(--steel);
+  border-color: var(--rad);
+}
+
+.terminal-tag {
+  font-family: var(--font-crt);
+  font-size: 17px;
+  color: var(--rad);
+  letter-spacing: 0.12em;
+  margin-bottom: 4px;
+}
+
+.terminal-name {
+  font-family: var(--font-stencil);
+  font-weight: 700;
+  font-size: 36px;
+  color: var(--paper);
+  margin: 0 0 14px;
+  letter-spacing: 0.02em;
+  line-height: 1;
+}
+
+.terminal-desc {
+  font-family: var(--font-display);
+  font-size: 14px;
+  color: var(--bone);
+  flex: 1;
+  margin: 0 0 18px;
+  line-height: 1.7;
+}
+
+.terminal-cmd {
+  font-family: var(--font-crt);
+  font-size: 17px;
+  color: var(--phos);
+  background: var(--void);
+  padding: 6px 12px;
+  border-left: 2px solid var(--phos-deep);
+  display: inline-block;
+  margin-bottom: 22px;
+  word-break: break-all;
+}
+
+.terminal-action {
+  align-self: flex-start;
+  font-family: var(--font-stencil);
+  font-weight: 800;
+  font-size: 15px;
+  letter-spacing: 0.22em;
+  text-transform: uppercase;
+  color: var(--void);
+  background: var(--rad);
+  padding: 12px 20px;
+  text-decoration: none;
+  border: none;
+  border-bottom: 4px solid var(--rad-deep);
+  cursor: pointer;
+  transition: transform 0.08s ease, background 0.15s ease, border-color 0.15s ease;
+  position: relative;
+}
+.terminal-action::before {
+  content: "▸  ";
+  font-family: var(--font-crt);
+}
+.terminal-action:hover {
+  background: var(--paper);
+  border-bottom-color: var(--rust-edge);
+  color: var(--void);
+}
+.terminal-action:active {
+  transform: translateY(3px);
+  border-bottom-width: 1px;
+}
+
+/* ===== WEAPON CARD (payload manifest) ============================ */
+
+.weapon {
+  background: var(--asphalt);
+  border: 1px solid var(--rust-edge);
+  position: relative;
+  overflow: hidden;
+  transition: border-color 0.2s ease;
+}
+
+.weapon::after {
+  /* faint trefoil watermark, only visible on hover */
+  content: "";
+  position: absolute;
+  right: -40px;
+  bottom: -40px;
+  width: 180px;
+  height: 180px;
+  background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='-100 -100 200 200'><defs><path id='b' d='M 20.78 -12 A 24 24 0 0 1 20.78 12 L 76.21 44 A 88 88 0 0 0 76.21 -44 Z'/></defs><g fill='%23fcd000'><use href='%23b' transform='rotate(-90)'/><use href='%23b' transform='rotate(30)'/><use href='%23b' transform='rotate(150)'/><circle r='12'/></g></svg>");
+  background-size: contain;
+  background-repeat: no-repeat;
+  opacity: 0;
+  transition: opacity 0.3s ease;
+  pointer-events: none;
+}
+
+.weapon:hover { border-color: var(--rad-dim); }
+.weapon:hover::after { opacity: 0.07; }
+
+.weapon-header {
+  background: var(--steel);
+  border-bottom: 1px dashed var(--rust-edge);
+  padding: 12px 22px;
+  display: flex;
+  align-items: baseline;
+  gap: 14px;
+  font-family: var(--font-crt);
+}
+
+.weapon-header .callsign {
+  font-size: 14px;
+  color: var(--bone-dim);
+  letter-spacing: 0.18em;
+}
+
+.weapon-header .codename {
+  font-size: 19px;
+  color: var(--rad);
+  letter-spacing: 0.06em;
+  margin-left: auto;
+}
+
+.weapon-body {
+  padding: 22px 26px 26px;
+  position: relative;
+  z-index: 1;
+}
+
+.weapon-specs {
+  display: grid;
+  grid-template-columns: max-content 1fr;
+  gap: 6px 22px;
+  margin: 0 0 18px;
+  padding: 14px 18px;
+  background: var(--void);
+  border-left: 2px solid var(--rad-dim);
+  font-family: var(--font-crt);
+  font-size: 17px;
+  line-height: 1.4;
+}
+
+.weapon-specs dt {
+  color: var(--bone-dim);
+  letter-spacing: 0.1em;
+}
+
+.weapon-specs dd {
+  margin: 0;
+  color: var(--paper);
+}
+
+.weapon-brief {
+  font-family: var(--font-display);
+  font-size: 14px;
+  color: var(--bone);
+  margin: 0 0 18px;
+  line-height: 1.7;
+}
+
+/* Stamps — declassified-document style */
+.stamp {
+  display: inline-block;
+  font-family: var(--font-stencil);
+  font-weight: 800;
+  font-size: 13px;
+  letter-spacing: 0.22em;
+  text-transform: uppercase;
+  border: 2.5px solid currentColor;
+  padding: 5px 12px 4px;
+  transform: rotate(-3deg);
+  opacity: 0.9;
+  position: relative;
+  user-select: none;
+}
+.stamp.green { color: var(--phos); }
+.stamp.amber { color: var(--rad); }
+.stamp.red   { color: var(--blood); }
+.stamp.bone  { color: var(--bone); }
+
+/* ===== DOCS / AUXILIARY ========================================== */
+
+.support-card {
+  background: var(--asphalt);
+  border: 1px solid var(--rust-edge);
+  padding: 22px 26px 24px;
+}
+
+.support-card h3 {
+  margin: 0 0 4px;
+  font-family: var(--font-stencil);
+  font-weight: 700;
+  font-size: 22px;
+  color: var(--paper);
+  letter-spacing: 0.04em;
+}
+
+.support-card .meta {
+  font-family: var(--font-crt);
+  font-size: 15px;
+  color: var(--rad);
+  margin-bottom: 14px;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+}
+
+.support-card ul {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  font-size: 14px;
+  font-family: var(--font-display);
+  color: var(--bone);
+}
+
+.support-card li {
+  padding: 8px 0 8px 18px;
+  border-bottom: 1px dotted var(--rust-edge);
+  position: relative;
+}
+
+.support-card li::before {
+  content: "▪";
+  position: absolute;
+  left: 0;
+  color: var(--rad);
+}
+
+.support-card li:last-child { border-bottom: 0; }
+.support-card li strong { color: var(--paper); font-weight: normal; letter-spacing: 0.04em; }
+
+.support-card a {
+  border-bottom: 1px dotted var(--rad-dim);
+}
+
+/* ===== FIELD NOTES =============================================== */
+
+.field-note {
+  background: var(--asphalt);
+  border: 1px solid var(--rust-edge);
+  border-top: 2px solid var(--rad-dim);
+  padding: 20px 24px 22px;
+  position: relative;
+}
+
+.field-note .note-num {
+  font-family: var(--font-crt);
+  font-size: 14px;
+  color: var(--rad);
+  letter-spacing: 0.18em;
+  margin-bottom: 6px;
+}
+
+.field-note h3 {
+  margin: 0 0 10px;
+  font-family: var(--font-stencil);
+  font-weight: 700;
+  font-size: 19px;
+  color: var(--paper);
+  letter-spacing: 0.04em;
+  line-height: 1.2;
+}
+
+.field-note p {
+  margin: 0;
+  font-family: var(--font-display);
+  font-size: 13.5px;
+  color: var(--bone);
+  line-height: 1.75;
+}
+
+/* ===== FOOTER ==================================================== */
+
+footer {
+  max-width: 1240px;
+  margin: 64px auto 0;
+  padding: 32px 36px 48px;
+  border-top: 1px dashed var(--rust-edge);
+  display: grid;
+  grid-template-columns: 1fr auto;
+  gap: 32px;
+  align-items: center;
+}
+
+.foot-meta {
+  font-family: var(--font-display);
+  font-size: 13px;
+  color: var(--bone-dim);
+  line-height: 1.8;
+}
+
+.foot-meta strong {
+  display: block;
+  font-family: var(--font-stencil);
+  font-weight: 800;
+  font-size: 22px;
+  color: var(--paper);
+  letter-spacing: 0.06em;
+  margin-bottom: 4px;
+}
+
+.declass-stamp {
+  font-family: var(--font-stencil);
+  font-weight: 800;
+  color: var(--blood);
+  border: 3px double var(--blood);
+  padding: 12px 20px;
+  transform: rotate(-3deg);
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  font-size: 14px;
+  text-align: center;
+  line-height: 1.45;
+  flex-shrink: 0;
+  background:
+    repeating-linear-gradient(
+      45deg,
+      transparent 0 4px,
+      rgba(198,61,47,0.04) 4px 5px
+    );
+}
+
+.declass-stamp small {
+  display: block;
+  font-family: var(--font-crt);
+  font-size: 12px;
+  color: var(--blood-deep);
+  margin-top: 4px;
+  letter-spacing: 0.16em;
+}
+
+/* ===== STAGGERED ENTRANCE ======================================== */
+
+.stagger > * {
+  opacity: 0;
+  animation: rise 0.55s ease forwards;
+}
+.stagger > :nth-child(1) { animation-delay: 0.08s; }
+.stagger > :nth-child(2) { animation-delay: 0.18s; }
+.stagger > :nth-child(3) { animation-delay: 0.28s; }
+.stagger > :nth-child(4) { animation-delay: 0.38s; }
+.stagger > :nth-child(5) { animation-delay: 0.48s; }
+
+@keyframes rise {
+  from { opacity: 0; transform: translateY(10px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+/* respect reduced-motion */
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation: none !important;
+    transition: none !important;
+  }
+}
+
+/* ===== RESPONSIVE ================================================ */
+
+@media (max-width: 880px) {
+  .hero {
+    grid-template-columns: 1fr;
+    padding: 36px 24px 24px;
+    gap: 24px;
+  }
+  .hero-glyph {
+    width: 130px;
+    height: 130px;
+    order: -1;
+    margin: 0 auto;
+  }
+  .ebs-bar {
+    flex-wrap: wrap;
+    padding: 10px 18px;
+    gap: 10px;
+    font-size: 11px;
+  }
+  .ebs-meta { width: 100%; text-align: center; }
+  .status-rack { gap: 8px 18px; font-size: 17px; }
+  main { padding: 32px 22px 24px; }
+  section { margin-bottom: 52px; }
+  .section-title { font-size: 26px; }
+  footer { grid-template-columns: 1fr; padding: 28px 22px 36px; }
+  .declass-stamp { justify-self: start; }
+}
+
+@media (max-width: 480px) {
+  h1.doomstick { font-size: 56px; }
+  .terminal-name { font-size: 30px; }
+}
+</style>
+</head>
+<body>
+
+<!-- ============== EMERGENCY BROADCAST ============== -->
+
+<div class="ebs" role="banner">
+  <div class="ebs-stripes" aria-hidden="true"></div>
+  <div class="ebs-bar">
+    <span class="ebs-mark" aria-hidden="true">☢</span>
+    <span class="ebs-title">Doomstick · Offline Emergency Assistance Network</span>
+    <span class="ebs-meta">v0·3 / 2026·05·06 / 127.0.0.1:8765</span>
+  </div>
+  <div class="ebs-stripes" aria-hidden="true"></div>
+</div>
+
+<!-- ============== HERO ============== -->
+
+<header class="hero">
+  <div class="title-block">
+    <div class="callout-bar">
+      <span class="live">◉ live</span>
+      <span class="sep">/</span>
+      <span>Cosmopolitan APE</span>
+      <span class="sep">/</span>
+      <span>cpu-only</span>
+      <span class="sep">/</span>
+      <span>22 GB on stick</span>
+    </div>
+    <h1 class="doomstick">DOOMSTICK</h1>
+    <p class="doomstick-tagline">Portable Offline AI Kit · For when the grid is down</p>
+
+    <p class="quotation">
+      “When the cell towers go quiet and the cloud forgets your name,
+      the bunker still has answers.”
+      <span class="attribution">— anonymous · 2 a.m. · three-day blackout</span>
+    </p>
+
+    <div class="status-rack" id="status-rack">
+      <div class="status" data-state="lost">
+        <span class="led red" aria-hidden="true"></span>
+        <span class="label">NETWORK</span>
+        <span class="read">[lost]</span>
+      </div>
+      <div class="status" data-state="usb">
+        <span class="led amber" aria-hidden="true"></span>
+        <span class="label">POWER</span>
+        <span class="read">[usb · D:\]</span>
+      </div>
+      <div class="status" id="ai-status" data-state="standby">
+        <span class="led red" aria-hidden="true"></span>
+        <span class="label">AI&nbsp;CORE</span>
+        <span class="read">[stand·by]</span>
+      </div>
+    </div>
+  </div>
+
+  <!-- Radiation trefoil — geometric ISO trefoil, drawn from one rotated blade -->
+  <svg class="hero-glyph" viewBox="-100 -100 200 200" aria-hidden="true">
+    <defs>
+      <path id="trefoil-blade" d="M 20.78 -12
+                                   A 24 24 0 0 1 20.78 12
+                                   L 76.21 44
+                                   A 88 88 0 0 0 76.21 -44 Z"/>
+    </defs>
+    <!-- outer dashed ring -->
+    <circle cx="0" cy="0" r="93" fill="none"
+            stroke="var(--rad)" stroke-width="1.5"
+            stroke-dasharray="2 6" opacity="0.55"/>
+    <!-- inner thin ring -->
+    <circle cx="0" cy="0" r="20" fill="none"
+            stroke="var(--rad)" stroke-width="1" opacity="0.35"/>
+    <!-- three blades + central disc -->
+    <g fill="var(--rad)">
+      <use href="#trefoil-blade" transform="rotate(-90)"/>
+      <use href="#trefoil-blade" transform="rotate(30)"/>
+      <use href="#trefoil-blade" transform="rotate(150)"/>
+      <circle r="12"/>
+    </g>
+  </svg>
+</header>
+
+<div class="hazard-divider" aria-hidden="true"></div>
+
+<main>
+
+<!-- ============== §01 BRIEFING ============== -->
+
+<section>
+  <h2 class="section-title"><span class="num">§01</span>Briefing</h2>
+  <div class="briefing">
+    Double-click the launcher for your operating system below. A console window opens, you pick a model,
+    the model loads, and the chat UI opens at <a href="http://127.0.0.1:8765">127.0.0.1:8765</a>.
+    Only <strong>one model runs at a time</strong> — to switch, press any key in the launcher window
+    to terminate, then run the launcher again. Everything happens locally; no telemetry leaves the host.
+    <span class="signoff">/// END TRANSMISSION ///</span>
+  </div>
+</section>
+
+<!-- ============== §02 INITIATION DEVICES ============== -->
+
+<section>
+  <h2 class="section-title"><span class="num">§02</span>Initiation Devices</h2>
+  <p class="section-lede">Three terminals, one mission. Pick your platform and double-click. The launcher kills any orphan llamafile, runs the model minimized, and pops the chat tab when it’s ready.</p>
+
+  <div class="grid grid-3 stagger">
+
+    <article class="terminal">
+      <span class="terminal-tag">▸ NODE-WIN</span>
+      <h3 class="terminal-name">Windows</h3>
+      <p class="terminal-desc">Double-click <code>start.bat</code> in File Explorer. Launcher pops a model menu and runs minimized in the taskbar. Press any key to terminate.</p>
+      <code class="terminal-cmd">D:\start.bat</code>
+      <a class="terminal-action" href="start.bat">Initiate</a>
+    </article>
+
+    <article class="terminal">
+      <span class="terminal-tag">▸ NODE-MAC</span>
+      <h3 class="terminal-name">macOS</h3>
+      <p class="terminal-desc">Double-click <code>start.command</code> in Finder. First run may need <em>Right-Click&nbsp;→&nbsp;Open</em> to bypass Gatekeeper.</p>
+      <code class="terminal-cmd">/Volumes/USB/start.command</code>
+      <a class="terminal-action" href="start.command">Initiate</a>
+    </article>
+
+    <article class="terminal">
+      <span class="terminal-tag">▸ NODE-NIX</span>
+      <h3 class="terminal-name">Linux</h3>
+      <p class="terminal-desc">Run from a terminal. WSL works too — the launcher prepends <code>sh</code> to dodge APE interception.</p>
+      <code class="terminal-cmd">$ ./start.sh</code>
+      <a class="terminal-action" href="start.sh">Initiate</a>
+    </article>
+
+  </div>
+</section>
+
+<!-- ============== §03 PAYLOAD MANIFEST ============== -->
+
+<section>
+  <h2 class="section-title"><span class="num">§03</span>Payload Manifest</h2>
+  <p class="section-lede">Three weights ship with the kit. Two appear in the launcher menu; the third is for retrieval, not chat.</p>
+
+  <div class="grid grid-3 stagger">
+
+    <article class="weapon">
+      <header class="weapon-header">
+        <span class="callsign">CALLSIGN</span>
+        <span class="codename">GEMMA-4 / E4B</span>
+      </header>
+      <div class="weapon-body">
+        <dl class="weapon-specs">
+          <dt>SIZE</dt><dd>5.0 GB</dd>
+          <dt>RAM&nbsp;MIN</dt><dd>≥ 8 GB</dd>
+          <dt>SPEED</dt><dd>~15 t/s on CPU</dd>
+          <dt>QUANT</dt><dd>Q4_K_M</dd>
+        </dl>
+        <p class="weapon-brief">Daily driver. Fast, well-rounded for chat, summaries, code, translation. Pick this if you’re unsure.</p>
+        <span class="stamp green">FIELD&nbsp;READY</span>
+      </div>
+    </article>
+
+    <article class="weapon">
+      <header class="weapon-header">
+        <span class="callsign">CALLSIGN</span>
+        <span class="codename">GEMMA-4 / 26B-A4B</span>
+      </header>
+      <div class="weapon-body">
+        <dl class="weapon-specs">
+          <dt>SIZE</dt><dd>17.0 GB</dd>
+          <dt>RAM&nbsp;MIN</dt><dd>≥ 18 GB</dd>
+          <dt>SPEED</dt><dd>~10 t/s on CPU</dd>
+          <dt>QUANT</dt><dd>UD-Q4_K_M · MoE</dd>
+        </dl>
+        <p class="weapon-brief">Mixture-of-Experts. Stronger reasoning and longer-context recall. 3.8 B params active per token, so faster than its size suggests.</p>
+        <span class="stamp amber">HEAVY&nbsp;ORDNANCE</span>
+      </div>
+    </article>
+
+    <article class="weapon">
+      <header class="weapon-header">
+        <span class="callsign">CALLSIGN</span>
+        <span class="codename">EMBEDGEMMA / 300M</span>
+      </header>
+      <div class="weapon-body">
+        <dl class="weapon-specs">
+          <dt>SIZE</dt><dd>329 MB</dd>
+          <dt>QUANT</dt><dd>Q8 QAT</dd>
+          <dt>OUTPUT</dt><dd>768-dim vectors</dd>
+          <dt>USE</dt><dd>RAG · search</dd>
+        </dl>
+        <p class="weapon-brief">Sentence embeddings for retrieval-augmented generation. Future tools will use it to chat with your documents. Not in the launcher menu.</p>
+        <span class="stamp bone">QUARTERMASTER</span>
+      </div>
+    </article>
+
+  </div>
+</section>
+
+<!-- ============== §04 AUXILIARY EQUIPMENT ============== -->
+
+<section>
+  <h2 class="section-title"><span class="num">§04</span>Auxiliary Equipment</h2>
+  <p class="section-lede">The kit is just the AI runtime + weights + launchers. To turn the same USB into a full survival stick, drop any of the following alongside <code>ai-kit/</code>.</p>
+
+  <div class="grid grid-2">
+
+    <div class="support-card">
+      <h3>Documentation</h3>
+      <div class="meta">// PRIMARY SOURCES</div>
+      <ul>
+        <li><strong><a href="README.txt">README.txt</a></strong> — kit-wide overview, plain text</li>
+        <li><strong><a href="ai-kit/">ai-kit/</a></strong> — runtime + models on disk</li>
+        <li><strong>logs</strong> — see <code>ai-kit/llamafile-{e4b,26b}.log</code> after first run</li>
+      </ul>
+    </div>
+
+    <div class="support-card">
+      <h3>BYO Modules</h3>
+      <div class="meta">// DROP·IN ALONGSIDE AI-KIT</div>
+      <ul>
+        <li><strong>Bootable ISOs</strong> + <a href="https://www.ventoy.net/">Ventoy</a> — Ubuntu / SystemRescue / Hiren’s BootCD</li>
+        <li><strong>Portable tools</strong> — PortableGit, VS Code Portable, ripgrep, fzf, jq, 7-Zip</li>
+        <li><strong>Offline reference</strong> — <a href="https://kiwix.org">Kiwix</a> + Wikipedia <code>.zim</code></li>
+        <li><strong>Encrypted vault</strong> — <code>age</code>-encrypted dotfiles + SSH/GPG keys</li>
+      </ul>
+    </div>
+
+  </div>
+</section>
+
+<!-- ============== §05 FIELD NOTES ============== -->
+
+<section>
+  <h2 class="section-title"><span class="num">§05</span>Field Notes</h2>
+  <p class="section-lede">Hard-earned operational guidance. Read before deploying in anger.</p>
+
+  <div class="grid grid-3 stagger">
+
+    <article class="field-note">
+      <div class="note-num">FN·01</div>
+      <h3>Slow first launch?</h3>
+      <p>USB is ~3-4× slower than local disk for model loading (~15 s vs ~4 s for E4B). Once loaded into RAM, generation speed is identical. For long sessions, copy <code>runtime/</code> and the relevant <code>models/*.gguf</code> to your Desktop and run from there.</p>
+    </article>
+
+    <article class="field-note">
+      <div class="note-num">FN·02</div>
+      <h3>Stop a running model</h3>
+      <p>Press any key in the launcher window — clean shutdown. Or close the minimized “Gemma 4 …” window in the taskbar / Task Manager / <code>pkill llamafile</code>.</p>
+    </article>
+
+    <article class="field-note">
+      <div class="note-num">FN·03</div>
+      <h3>Override flags or port</h3>
+      <p>The launcher uses port 8765 and 8&nbsp;K context. To change, edit <code>start.bat</code> / <code>.sh</code> / <code>.command</code> at the USB root, or run <code>ai-kit\runtime\llamafile.exe</code> with your own flags directly.</p>
+    </article>
+
+    <article class="field-note">
+      <div class="note-num">FN·04</div>
+      <h3>“This app can’t run on your PC”</h3>
+      <p>Old <code>.llamafile.exe</code> bundle &gt;4 GB — the Windows PE loader rejects it. The current kit ships runtime + weights separately to dodge the limit. Use <code>start.bat</code>.</p>
+    </article>
+
+    <article class="field-note">
+      <div class="note-num">FN·05</div>
+      <h3>Empty chat / spinning forever</h3>
+      <p>Model is still loading from USB. Wait 30-60 s and refresh. Check <code>ai-kit/llamafile-e4b.log</code> for live progress (look for <code>server is listening</code>).</p>
+    </article>
+
+    <article class="field-note">
+      <div class="note-num">FN·06</div>
+      <h3>WSL: “APE is running on WIN32”</h3>
+      <p>Prefix invocations with <code>sh</code>: <code>sh ./runtime/llamafile -m models/...</code>. The launcher already does this; the workaround is for ad-hoc commands.</p>
+    </article>
+
+  </div>
+</section>
+
+</main>
+
+<footer>
+  <div class="foot-meta">
+    <strong>DOOMSTICK</strong>
+    Built with llamafile 0.10.1 · Gemma 4 GGUFs (unsloth) · EmbeddingGemma (ggml-org) · 100% offline.
+    <br>
+    Recipe Apache-2.0. Embedded weights subject to <a href="https://ai.google.dev/gemma/terms">Gemma terms</a>.
+    Stay weird. Stay prepared. Stay offline.
+  </div>
+  <div class="declass-stamp" aria-label="Declassified stamp">
+    Declassified<br>2026·05·06
+    <small>Use With Caution</small>
+  </div>
+</footer>
+
+<script>
+/* Live status check.
+ * Pings the local llamafile server. If it answers, flips the AI CORE LED
+ * from STAND·BY (red) to ARMED (green/blink). Polls every 6 s.
+ *
+ * Cross-origin note: when this page is opened via file:// the fetch
+ * is allowed; if served over a different origin, the browser may
+ * surface a CORS error which we silently catch and treat as offline.
+ */
+(function () {
+  var node  = document.getElementById('ai-status');
+  if (!node) return;
+  var led   = node.querySelector('.led');
+  var read  = node.querySelector('.read');
+  var last  = null;
+
+  function setState(state) {
+    if (state === last) return;
+    last = state;
+    node.dataset.state = state;
+    if (state === 'armed') {
+      led.className = 'led green';
+      read.textContent = '[armed]';
+    } else {
+      led.className = 'led red';
+      read.textContent = '[stand·by]';
+    }
+  }
+
+  function ping() {
+    var ctrl = ('AbortController' in window) ? new AbortController() : null;
+    var timer = setTimeout(function () { if (ctrl) ctrl.abort(); }, 2200);
+    return fetch('http://127.0.0.1:8765/v1/models', {
+      method: 'GET',
+      mode: 'cors',
+      cache: 'no-store',
+      signal: ctrl ? ctrl.signal : undefined
+    }).then(function (r) {
+      clearTimeout(timer);
+      setState(r.ok ? 'armed' : 'standby');
+    }).catch(function () {
+      clearTimeout(timer);
+      setState('standby');
+    });
+  }
+
+  ping();
+  setInterval(ping, 6000);
+})();
+</script>
+
+</body>
+</html>
