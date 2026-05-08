@@ -1,0 +1,11 @@
+# Whisperfile variants from Mozilla's Hugging Face repo.
+# https://huggingface.co/Mozilla/whisperfile/tree/main
+# All four are .en (English-only) variants; multilingual variants exist
+# (whisper-base.llamafile, whisper-small.llamafile etc) — add rows here if
+# needed. base.en is today's default.
+#
+# label	url	filename	bytes
+Tiny.en (~80 MB — fastest, lower accuracy)	https://huggingface.co/Mozilla/whisperfile/resolve/main/whisper-tiny.en.llamafile?download=true	whisper-tiny.en.llamafile	80000000
+Base.en (~148 MB — balanced)	https://huggingface.co/Mozilla/whisperfile/resolve/main/whisper-base.en.llamafile?download=true	whisper-base.en.llamafile	148000000
+Small.en (~485 MB — better accuracy, slower)	https://huggingface.co/Mozilla/whisperfile/resolve/main/whisper-small.en.llamafile?download=true	whisper-small.en.llamafile	485000000
+Medium.en (~1.5 GB — best accuracy, slowest)	https://huggingface.co/Mozilla/whisperfile/resolve/main/whisper-medium.en.llamafile?download=true	whisper-medium.en.llamafile	1500000000

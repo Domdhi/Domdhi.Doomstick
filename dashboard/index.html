@@ -875,7 +875,7 @@ footer {
   <div class="ebs-bar">
     <span class="ebs-mark" aria-hidden="true">☢</span>
     <span class="ebs-title">Doomstick · Offline Emergency Assistance Network</span>
-    <span class="ebs-meta">v0·3 / 2026·05·06 / 127.0.0.1:8765</span>
+    <span class="ebs-meta">v0·4 / 2026·05·07 / 127.0.0.1:8765</span>
   </div>
   <div class="ebs-stripes" aria-hidden="true"></div>
 </div>
@@ -891,7 +891,7 @@ footer {
       <span class="sep">/</span>
       <span>cpu-only</span>
       <span class="sep">/</span>
-      <span>22 GB on stick</span>
+      <span>22.6 GB on stick</span>
     </div>
     <h1 class="doomstick">DOOMSTICK</h1>
     <p class="doomstick-tagline">Portable Offline AI Kit · For when the grid is down</p>
@@ -1063,11 +1063,70 @@ footer {
   </div>
 </section>
 
-<!-- ============== §04 AUXILIARY EQUIPMENT ============== -->
+<!-- ============== §04 SIDE ARMS ============== -->
 
 <section>
-  <h2 class="section-title"><span class="num">§04</span>Auxiliary Equipment</h2>
-  <p class="section-lede">The kit is just the AI runtime + weights + launchers. To turn the same USB into a full survival stick, drop any of the following alongside <code>ai-kit/</code>.</p>
+  <h2 class="section-title"><span class="num">§04</span>Side Arms</h2>
+  <p class="section-lede">The kit is more than just the AI core. Five auxiliary tools ship alongside, each with its own launcher and its own port. Run them in parallel — chat, transcribe, look something up on offline Wikipedia, OCR a photo, all from the same stick.</p>
+
+  <div class="grid grid-3 stagger">
+
+    <article class="terminal">
+      <span class="terminal-tag">▸ AUX·VOICE</span>
+      <h3 class="terminal-name">Whisperfile</h3>
+      <p class="terminal-desc">Audio → text via OpenAI Whisper. Drop a recording, get a transcript. Cosmopolitan APE, same family as llamafile. Runs on port <code>8766</code>.</p>
+      <code class="terminal-cmd" data-cmd-for="start-whisper.bat">start-whisper.bat</code>
+      <button class="terminal-action" type="button" data-copy-path="start-whisper.bat">Copy Path</button>
+    </article>
+
+    <article class="terminal">
+      <span class="terminal-tag">▸ AUX·OCR</span>
+      <h3 class="terminal-name">OCR</h3>
+      <p class="terminal-desc">Image → text via tesseract.js, fully in-browser. Drag a photo of a sign / scan / handwritten page. No server. Opens <code>ocr/index.html</code>.</p>
+      <code class="terminal-cmd" data-cmd-for="start-ocr.bat">start-ocr.bat</code>
+      <button class="terminal-action" type="button" data-copy-path="start-ocr.bat">Copy Path</button>
+    </article>
+
+    <article class="terminal">
+      <span class="terminal-tag">▸ AUX·WIKI</span>
+      <h3 class="terminal-name">Wikipedia</h3>
+      <p class="terminal-desc">Offline Wikipedia via Kiwix. Default ZIM is Simple English (~395 MB). Swap in <code>wikipedia_en_all_nopic_mini</code> for the real thing. Port <code>8767</code>.</p>
+      <code class="terminal-cmd" data-cmd-for="start-wiki.bat">start-wiki.bat</code>
+      <button class="terminal-action" type="button" data-copy-path="start-wiki.bat">Copy Path</button>
+    </article>
+
+    <article class="terminal">
+      <span class="terminal-tag">▸ AUX·DOCS</span>
+      <h3 class="terminal-name">DevDocs</h3>
+      <p class="terminal-desc">MDN / Python / Bash / Linux man / 100+ programming references. <strong>Manual setup</strong> — see <a href="docs-offline/README.txt">docs-offline/README.txt</a>. Once populated, opens <code>file://</code>.</p>
+      <code class="terminal-cmd" data-cmd-for="start-docs.bat">start-docs.bat</code>
+      <button class="terminal-action" type="button" data-copy-path="start-docs.bat">Copy Path</button>
+    </article>
+
+    <article class="terminal">
+      <span class="terminal-tag">▸ AUX·MAPS</span>
+      <h3 class="terminal-name">Maps</h3>
+      <p class="terminal-desc">OSM regional <code>.pbf</code> in <code>maps/</code>. Mobile-only — sideload to <a href="https://organicmaps.app/">Organic Maps</a> on Android / iOS. See <a href="maps/README.md">maps/README.md</a> for the swap-region recipe.</p>
+      <code class="terminal-cmd">maps/&lt;region&gt;.osm.pbf</code>
+      <button class="terminal-action" type="button" data-copy-path="maps/">Copy Path</button>
+    </article>
+
+    <article class="terminal">
+      <span class="terminal-tag">▸ AUX·TTS</span>
+      <h3 class="terminal-name">TTS</h3>
+      <p class="terminal-desc">Text → audio via Sherpa-ONNX + Supertonic int8. Rides on redbean's <code>/tts</code> route — POST plain text, get <code>audio/wav</code> back. Native C++, no Python. Shares port <code>8768</code> with DOOM saves.</p>
+      <code class="terminal-cmd">curl -X POST :8768/tts -d 'hello' -o out.wav</code>
+      <button class="terminal-action" type="button" data-copy-path="ai-kit/sherpa-tts/">Copy Path</button>
+    </article>
+
+  </div>
+</section>
+
+<!-- ============== §05 AUXILIARY EQUIPMENT (BYO) ============== -->
+
+<section>
+  <h2 class="section-title"><span class="num">§05</span>Auxiliary Equipment</h2>
+  <p class="section-lede">Bring-your-own modules — drop any of the following alongside <code>ai-kit/</code> and they ride the USB.</p>
 
   <div class="grid grid-2">
 
@@ -1077,7 +1136,7 @@ footer {
       <ul>
         <li><strong><a href="README.txt">README.txt</a></strong> — kit-wide overview, plain text</li>
         <li><strong><a href="ai-kit/">ai-kit/</a></strong> — runtime + models on disk</li>
-        <li><strong>logs</strong> — see <code>ai-kit/llamafile-{e4b,26b}.log</code> after first run</li>
+        <li><strong>logs</strong> — see <code>ai-kit/llamafile-{e4b,26b}.log</code> + <code>ai-kit/whisper.log</code> + <code>ai-kit/kiwix.log</code></li>
       </ul>
     </div>
 
@@ -1087,7 +1146,7 @@ footer {
       <ul>
         <li><strong>Bootable ISOs</strong> + <a href="https://www.ventoy.net/">Ventoy</a> — Ubuntu / SystemRescue / Hiren’s BootCD</li>
         <li><strong>Portable tools</strong> — PortableGit, VS Code Portable, ripgrep, fzf, jq, 7-Zip</li>
-        <li><strong>Offline reference</strong> — <a href="https://kiwix.org">Kiwix</a> + Wikipedia <code>.zim</code></li>
+        <li><strong>Piper TTS</strong> — text → audio, completes the voice stack with whisperfile</li>
         <li><strong>Encrypted vault</strong> — <code>age</code>-encrypted dotfiles + SSH/GPG keys</li>
       </ul>
     </div>
@@ -1095,10 +1154,10 @@ footer {
   </div>
 </section>
 
-<!-- ============== §05 FIELD NOTES ============== -->
+<!-- ============== §06 FIELD NOTES ============== -->
 
 <section>
-  <h2 class="section-title"><span class="num">§05</span>Field Notes</h2>
+  <h2 class="section-title"><span class="num">§06</span>Field Notes</h2>
   <p class="section-lede">Hard-earned operational guidance. Read before deploying in anger.</p>
 
   <div class="grid grid-3 stagger">
@@ -1153,7 +1212,7 @@ footer {
     Stay weird. Stay prepared. Stay offline.
   </div>
   <div class="declass-stamp" aria-label="Declassified stamp">
-    Declassified<br>2026·05·06
+    Declassified<br>2026·05·07
     <small>Use With Caution</small>
   </div>
 </footer>

@@ -23,18 +23,37 @@ LAYOUT
 
 USB root
 +-- index.html                       One-page dashboard for everything
-+-- start.bat / .command / .sh       Launcher (model-picker menu)
++-- start.bat / .command / .sh       AI launcher (Gemma 4 model-picker)
++-- start-whisper.{bat,command,sh}   Whisperfile (audio -> text, port 8766)
++-- start-wiki.{bat,command,sh}      Kiwix (offline Wikipedia, port 8767)
++-- start-ocr.{bat,command,sh}       OCR (image -> text, browser only)
++-- start-docs.{bat,command,sh}      DevDocs (programming reference; manual setup)
 +-- README.txt                       This file
 |
-+-- ai-kit\                          The portable AI runtime + models
-    +-- runtime\
-    |   +-- llamafile               43 MB inference engine (Linux/macOS)
-    |   +-- llamafile.exe           Same engine, named for Windows
-    +-- models\
-    |   +-- gemma-4-E4B-it-Q4_K_M.gguf            Daily driver  (~5 GB)
-    |   +-- gemma-4-26B-A4B-it-UD-Q4_K_M.gguf     Big brain MoE (~17 GB)
-    |   +-- embeddinggemma-300m-qat-Q8_0.gguf     Embeddings (RAG/search)
-    +-- llamafile-{e4b,26b}.log     Created on first run (full server log)
++-- ai-kit\                          AI runtime + models + side-arm binaries
+|   +-- runtime\
+|   |   +-- llamafile               43 MB inference engine (Linux/macOS)
+|   |   +-- llamafile.exe           Same engine, named for Windows
+|   +-- models\
+|   |   +-- gemma-4-E4B-it-Q4_K_M.gguf            Daily driver  (~5 GB)
+|   |   +-- gemma-4-26B-A4B-it-UD-Q4_K_M.gguf     Big brain MoE (~17 GB)
+|   |   +-- embeddinggemma-300m-qat-Q8_0.gguf     Embeddings (RAG/search)
+|   +-- whisper\
+|   |   +-- whisper-base.en.llamafile             Whisperfile (~148 MB)
+|   +-- kiwix\
+|   |   +-- linux\, mac\, win\                    kiwix-serve binaries per OS
+|   +-- redbean\
+|   |   +-- redbean.com                            Local platform layer (port 8768)
+|   |   +-- saves.db                               DOOM save slots (created on first save)
+|   +-- sherpa-tts\
+|   |   +-- linux\, mac\, win\                     sherpa-onnx-offline-tts per OS
+|   |   +-- models\supertonic\                     Supertonic int8 ONNX (~120 MB)
+|   +-- *.log                       Created on first run of each tool
+|
++-- zim\                             Wikipedia ZIM file(s) for kiwix-serve
++-- ocr\                             tesseract.js static page + lang packs
++-- maps\                            OSM regional .pbf (sideload to phone)
++-- docs-offline\                    DevDocs (manual setup)
 
 
 -------------------------------------------------------------------------
@@ -79,24 +98,55 @@ weights.
 
 
 -------------------------------------------------------------------------
+SIDE ARMS (shipped with the kit)
+-------------------------------------------------------------------------
+
+  start-whisper.{bat,command,sh}    Whisperfile audio-to-text (Whisper
+                                    base.en, ~148 MB). GUI on port 8766.
+
+  start-wiki.{bat,command,sh}       Kiwix-serve. Default ZIM is Simple
+                                    English Wikipedia (~395 MB). To swap
+                                    in a bigger ZIM, drop another .zim
+                                    into zim/ and re-run; kiwix-serve
+                                    serves them all.
+
+  start-ocr.{bat,command,sh}        Tesseract.js OCR static page. English
+                                    by default; drop more .traineddata
+                                    files into ocr/lang-data/ for other
+                                    languages.
+
+  start-docs.{bat,command,sh}       DevDocs offline. Not auto-fetched
+                                    by build-usb -- see docs-offline/
+                                    README.txt for the manual setup.
+
+  maps/<region>.osm.pbf             OSM regional data. Mobile-only --
+                                    sideload to Organic Maps on Android
+                                    or iOS. See maps/README.md.
+
+  POST :8768/tts                    Sherpa-ONNX + Supertonic int8 TTS,
+                                    rides on redbean (no extra launcher).
+                                    Plain-text body in, audio/wav out.
+                                    Native C++ binaries per OS, no
+                                    Python on host.
+
+
+-------------------------------------------------------------------------
 ADD-ONS YOU CAN BRING YOURSELF (BYO)
 -------------------------------------------------------------------------
 
-This kit is just the AI runtime + weights + launchers. If you want to
-turn the same USB into a full survival/dev stick, drop the following
-on alongside ai-kit/ -- nothing in the launcher cares about siblings:
+If you want to turn the same USB into a full survival/dev stick, drop
+the following alongside ai-kit/ -- nothing in the launchers cares about
+siblings:
 
   *.iso       Bootable rescue media (Ubuntu, SystemRescue, Hiren's BootCD).
               Add Ventoy (https://www.ventoy.net/) to make the stick
               boot-menu its own ISO collection.
   tools\      Portable Windows utilities (PortableGit, VS Code Portable,
               ripgrep, fzf, jq, 7-Zip).
-  zim\        Offline Wikipedia / medical references via Kiwix
-              (https://kiwix.org).
   vault\      An age-encrypted tarball of dotfiles, SSH keys, 2FA codes.
 
-See README.md in the source repo for the full pending menu and
-per-item rationale.
+See README.md in the source repo and docs/auxiliary-roadmap.md for the
+full pending menu and per-item rationale.
 
 
 -------------------------------------------------------------------------
@@ -105,10 +155,17 @@ LICENSE
 
 Recipe: Apache 2.0 (see source repo for LICENSE).
 Embedded artifacts:
-  - llamafile runtime  -> Apache 2.0
-  - Gemma 4 weights    -> Apache 2.0 + Google Gemma terms
-  - EmbeddingGemma     -> Apache 2.0 + Google Gemma terms
-  - unsloth quants     -> Apache 2.0
+  - llamafile runtime    -> Apache 2.0
+  - Whisperfile          -> Apache 2.0
+  - Gemma 4 weights      -> Apache 2.0 + Google Gemma terms
+  - EmbeddingGemma       -> Apache 2.0 + Google Gemma terms
+  - unsloth quants       -> Apache 2.0
+  - kiwix-tools          -> GPL-3.0
+  - tesseract.js         -> Apache 2.0
+  - tessdata_fast (eng)  -> Apache 2.0
+  - OSM .pbf data        -> ODbL (attribute "(c) OpenStreetMap contributors")
 
-Built with: Mozilla llamafile 0.10.1, Gemma 4 GGUFs from unsloth,
-EmbeddingGemma-300M Q8 QAT from Google (via ggml-org).
+Built with: Mozilla llamafile 0.10.1, Mozilla whisperfile, Gemma 4
+GGUFs from unsloth, EmbeddingGemma-300M Q8 QAT from Google (via
+ggml-org), kiwix-tools (kiwix.org), tesseract.js (Naptha), Geofabrik
+.pbf extracts.

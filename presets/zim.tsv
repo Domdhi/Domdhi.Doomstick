@@ -1,0 +1,13 @@
+# Wikipedia ZIM options for kiwix-serve.
+# Sourced from https://download.kiwix.org/zim/wikipedia/ — pin specific months
+# in the filename so re-runs are deterministic. Update annually.
+#
+# bytes column is approximate; the build's verify_size uses a 95% lower bound.
+#
+# label	url	filename	bytes
+Simple English (~395 MB)	https://download.kiwix.org/zim/wikipedia/wikipedia_en_simple_all_nopic_2024-06.zim	wikipedia_en_simple_all_nopic_2024-06.zim	395000000
+WikiMed Medical EN (~3 GB)	https://download.kiwix.org/zim/wikipedia/wikipedia_en_medicine_2024-06.zim	wikipedia_en_medicine_2024-06.zim	3000000000
+English no-pic FULL (~50 GB — huge)	https://download.kiwix.org/zim/wikipedia/wikipedia_en_all_nopic_2024-06.zim	wikipedia_en_all_nopic_2024-06.zim	50000000000
+German Simple (~250 MB)	https://download.kiwix.org/zim/wikipedia/wikipedia_de_basisartikel_nopic_2024-06.zim	wikipedia_de_basisartikel_nopic_2024-06.zim	250000000
+French Simple (~280 MB)	https://download.kiwix.org/zim/wikipedia/wikipedia_fr_basique_nopic_2024-06.zim	wikipedia_fr_basique_nopic_2024-06.zim	280000000
+Spanish Simple (~310 MB)	https://download.kiwix.org/zim/wikipedia/wikipedia_es_basicos_nopic_2024-06.zim	wikipedia_es_basicos_nopic_2024-06.zim	310000000

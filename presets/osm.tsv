@@ -1,0 +1,14 @@
+# OSM regional .pbf options from Geofabrik.
+# Mobile-only consumption — see maps/README.md for sideload protocol.
+# Default = Monaco (~700 KB) as a working placeholder, not a recommendation.
+# Larger regions noted; pick by what fits your stick + how much detail you need.
+#
+# label	url	filename	bytes
+Monaco (~700 KB — placeholder only)	https://download.geofabrik.de/europe/monaco-latest.osm.pbf	monaco-latest.osm.pbf	700000
+United Kingdom (~1.3 GB)	https://download.geofabrik.de/europe/great-britain-latest.osm.pbf	great-britain-latest.osm.pbf	1300000000
+Spain (~1.2 GB)	https://download.geofabrik.de/europe/spain-latest.osm.pbf	spain-latest.osm.pbf	1200000000
+Italy (~2 GB)	https://download.geofabrik.de/europe/italy-latest.osm.pbf	italy-latest.osm.pbf	2000000000
+Germany (~3.6 GB)	https://download.geofabrik.de/europe/germany-latest.osm.pbf	germany-latest.osm.pbf	3600000000
+France (~3.7 GB)	https://download.geofabrik.de/europe/france-latest.osm.pbf	france-latest.osm.pbf	3700000000
+United States (~9 GB)	https://download.geofabrik.de/north-america/us-latest.osm.pbf	us-latest.osm.pbf	9000000000
+North America (~12 GB)	https://download.geofabrik.de/north-america-latest.osm.pbf	north-america-latest.osm.pbf	12000000000

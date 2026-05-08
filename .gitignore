@@ -1,0 +1,36 @@
+# Build artifacts — fetched by build-usb.sh, never committed
+/runtime/
+llamafile
+llamafile.exe
+/models/
+*.gguf
+/zipalign
+*.llamafile
+*.llamafile.exe
+/.args
+/zim/
+*.zim
+/doom/doom1.wad
+/redbean/redbean.com
+*.com
+/maps/*.pbf
+/maps/*.osm.pbf
+/ocr/lib/
+/ocr/lang-data/
+/ai-kit/
+/ai-kit-mac/
+/docs-offline/*
+!/docs-offline/README.txt
+
+# Runtime
+/tmp/
+*.log
+*.pid
+
+# Per-USB build configs
+/build-usb-config.sh
+/build-usb-config.ps1
+
+# OS / editor
+.DS_Store
+*.swp

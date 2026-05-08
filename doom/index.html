@@ -1,0 +1,342 @@
+<!doctype html>
+<!--
+  doom/index.html — Doomstick wrapper around Dwasm.
+
+  Derivative of Dwasm (https://github.com/GMH-Code/Dwasm) by Gregory
+  Maynard-Hoare. Distributed under the GNU General Public License v2.
+  See LICENSE-GPL-2.0 in this directory.
+
+  This wrapper strips Dwasm's IWAD-picker UI in favour of auto-loading the
+  shareware DOOM1.WAD that ships with the kit at /doom/doom1.wad. The age
+  gate is bypassed (the kit is shipped pre-cleared by deliberate
+  installation; standard shareware DOOM has been freely redistributable
+  for 30 years).
+
+  v0.6+ — Saves DO persist across reloads via redbean's /save endpoint:
+    * On boot we GET /list, then for each populated slot GET /load and
+      inject the bytes into MEMFS at /doomsavN.dsg before the engine
+      starts.
+    * After boot, FS.trackingDelegate.onCloseFile catches in-game saves
+      and POSTs the bytes to /save?slot=N. SQLite-backed; the DB lives
+      at <USB>/ai-kit/redbean/saves.db so saves travel with the stick.
+    * If redbean isn't reachable (e.g. opened via file:// for dev) the
+      fetches fail soft and the game runs with no persistence.
+-->
+<html lang=en>
+<meta charset=utf-8>
+<meta name=viewport content="width=device-width,height=device-height,initial-scale=1">
+<title>DOOM — Doomstick</title>
+<style>
+body{background-color:#202020;color:#e0e0e0;font-family:Arial,Helvetica,sans-serif;font-size:16px;margin:0;text-align:center}
+.textInfo{margin:8px}
+.spinner{height:50px;width:50px;margin:0 auto;animation:rotation .8s linear infinite;border-left:10px solid #606060;border-right:10px solid #606060;border-bottom:10px solid #606060;border-top:10px solid #fff;border-radius:100%;background-color:inherit}
+@keyframes rotation{from{transform:rotate(0deg)}to{transform:rotate(360deg)}}
+progress{width:250px;height:20px}
+textarea{margin-left:auto;margin-right:auto;font-family:monospace;font-size:14px;color:#ccc;border:1px solid #444;width:calc(100% - 24px);height:calc(100vh - 24px);margin-top:8px;background-color:inherit;resize:none;outline:none;display:none}
+canvas{border:0;background-color:#000;width:calc(min(100vw,100vh * 4/3));height:calc(min(100vh,100vw * 0.75));margin-top:calc(0.5 * (100vh - (min(100vh,100vw * 0.75))));margin-left:auto;margin-right:auto;outline:none;display:none}
+@supports(height:1dvh){
+  textarea{height:calc(100dvh - 24px)}
+  canvas{width:calc(min(100dvw,100dvh * 4/3));height:calc(min(100dvh,100dvw * 0.75));margin-top:calc(0.5 * (100dvh - (min(100dvh,100dvw * 0.75))))}
+}
+footer{font-size:10px;margin-top:8px}
+</style>
+
+<div id=statusContainer class=textInfo>
+  <h2>DOOM</h2>
+  <figure><div class=spinner></div></figure>
+  <div id=status>Starting...</div>
+  <progress value=0 max=100 id=progress hidden></progress>
+  <footer>Powered by <a href="https://github.com/GMH-Code/Dwasm" target=_blank style="color:inherit">Dwasm</a> (PrBoom+ via emscripten, GPL-2.0).
+  Running on the <strong>shareware DOOM1.WAD</strong> — Episode 1 only.
+  Saves persist to the USB via redbean's <code>/save</code> endpoint.</footer>
+</div>
+
+<textarea id=output readonly></textarea>
+<canvas id=canvas oncontextmenu=event.preventDefault(); tabindex=-1></canvas>
+
+<script>
+// ----------------------------------------------------------------------
+// Dwasm Module configuration — kept faithful to upstream so index.js loads.
+// (Trimmed: removed IWAD picker hooks, touch controls UI, age gate; those
+// don't apply when we auto-load a single bundled WAD.)
+// ----------------------------------------------------------------------
+
+const statusContainerElement = document.getElementById('statusContainer');
+const statusElement          = document.getElementById('status');
+const progressElement        = document.getElementById('progress');
+const canvasElement          = document.getElementById('canvas');
+const outputElement          = document.getElementById('output');
+
+let userFileDict = {};
+
+// Save bridge state. Set true once userFileDict has been written so we don't
+// echo our own load-time injections back to redbean as if they were saves.
+let saveBridgeArmed = false;
+
+var Module = {
+  _canLockPointer: true,
+  _depsLastLeft: 0,
+  _depsDone: 0,
+  _depsTotal: 0,
+  canvas: (function () {
+    canvasElement.addEventListener('webglcontextlost', function (e) {
+      e.preventDefault();
+      alert('WebGL context lost. Please reload the page!');
+    }, false);
+    return canvasElement;
+  })(),
+  print: (function () {
+    return function (text) { console.log(text); _printText(text); };
+  })(),
+  printErr: (function () {
+    return function (text) { console.error(text); _printText('(!) ' + text); };
+  })(),
+  setStatus: function (text) {
+    if (!Module.setStatus.last) Module.setStatus.last = { time: Date.now(), text: '' };
+    if (text === Module.setStatus.last.text) return;
+    const m = text.match(/([^(]+)\((\d+(?:\.\d+)?)\/(\d+(?:\.\d+)?|\?)\)/);
+    if (m) {
+      const now = Date.now();
+      if (now - Module.setStatus.last.time < 16.67) return;
+      Module.setStatus.last.time = now;
+      Module.setStatus.last.text = text;
+      const from = Number(m[2]);
+      const totalRaw = m[3];
+      if (totalRaw !== '?') {
+        const to = Number(totalRaw);
+        text = m[1].trim() + '<br>(' + (from / 1024).toFixed(0) + ' KiB of ' + (to / 1024).toFixed(0) + ' KiB)';
+        progressElement.value = from;
+        progressElement.max = to;
+        progressElement.hidden = false;
+      } else {
+        progressElement.hidden = true;
+        text = m[1].trim() + '<br>(' + (from / 1024).toFixed(0) + ' KiB)';
+      }
+    } else {
+      progressElement.hidden = true;
+    }
+    statusElement.innerHTML = text;
+  },
+  onRuntimeInitialized: function () {
+    // Inject our pre-fetched IWAD (and any pre-loaded saves) into emscripten
+    // FS, then drop into game. Bridge stays disarmed during this loop so we
+    // don't POST the saves we just loaded back to redbean.
+    for (let userFilename in userFileDict) {
+      const userFileData = userFileDict[userFilename][1];
+      const userFileSize = userFileData.length;
+      console.info('Writing to MemFS: ' + userFilename + ' (' + userFileSize + ' bytes)');
+      const userDestFile = FS.open('/' + userFilename, 'w');
+      FS.write(userDestFile, userFileData, 0, userFileSize, 0);
+      FS.close(userDestFile);
+    }
+    installSaveBridge();
+    saveBridgeArmed = true;
+    this.showConsole();
+    this.setStatus('');
+    statusContainerElement.style.display = 'none';
+    userFileDict = {};
+  },
+  monitorRunDependencies: function (left) {
+    const depsDiff = Module._depsLastLeft - left;
+    if (depsDiff !== 0) {
+      if (depsDiff > 0) Module._depsDone += depsDiff;
+      else              Module._depsTotal -= depsDiff;
+      Module._depsLastLeft = left;
+      Module.setStatus('Preparing dependencies...<br>(' + Module._depsDone + ' done, ' + Module._depsTotal + ' found)');
+    }
+  },
+  hideConsole: function () {
+    outputElement.style.display = 'none';
+    canvasElement.style.display = 'block';
+    canvasElement.focus();
+  },
+  showConsole: function () {
+    canvasElement.style.display = 'none';
+    outputElement.style.display = 'block';
+    outputElement.scrollTop = outputElement.scrollHeight;
+    outputElement.focus();
+  },
+  captureMouse: function () {
+    if (Module._canLockPointer && !Module._attemptPointerLock()) {
+      Module._canLockPointer = false;
+      console.info('Delayed pointer lock requested.');
+      document.addEventListener('keydown', Module._lockPointerOnKey);
+    }
+  },
+  winResized: function () {
+    let dVW, dVH, aspX, aspY;
+    if (window.CSS.supports('height', '1dvh')) { dVW = '100dvw'; dVH = '100dvh'; }
+    else                                       { dVW = '100vw';  dVH = '100vh';  }
+    aspX = canvasElement.width + ' / ' + canvasElement.height;
+    aspY = canvasElement.height + ' / ' + canvasElement.width;
+    canvasElement.style.width      = 'calc(min(' + dVW + ', ' + dVH + ' * ' + aspX + '))';
+    canvasElement.style.height     = 'calc(min(' + dVH + ', ' + dVW + ' * ' + aspY + '))';
+    canvasElement.style.marginTop  = 'calc(0.5 * (' + dVH + ' - (min(' + dVH + ', ' + dVW + ' * ' + aspY + '))))';
+  },
+  _attemptPointerLock: function () {
+    if (document.pointerLockElement === null) canvasElement.requestPointerLock();
+    return document.pointerLockElement !== null;
+  },
+  _lockPointerOnKey: function (event) {
+    if ((event.key === 'Escape') || Module._attemptPointerLock()) {
+      document.removeEventListener('keydown', Module._lockPointerOnKey);
+      console.info('Delayed pointer lock complete.');
+      Module._canLockPointer = true;
+    }
+  },
+  softExit: (status) => { console.info('Program exited with code', status); },
+  arguments: []
+};
+
+function _printText(text) {
+  outputElement.value += text + '\n';
+  if (outputElement.value.length > 2097152) outputElement.value = outputElement.value.slice(-1048576);
+  outputElement.scrollTop = outputElement.scrollHeight;
+}
+
+// ----------------------------------------------------------------------
+// Save bridge: GET /list + /load on boot, hook FS close on writes.
+// ----------------------------------------------------------------------
+// PrBoom writes save games as `doomsavN.dsg` (slot N, 0..5). We assume
+// they land at MEMFS root — that's where Dwasm's preload puts user files
+// (see onRuntimeInitialized). If a future engine update changes the path,
+// the regex below is the only place to update.
+const SAVE_SLOT_RE = /(?:^|\/)doomsav(\d+)\.dsg$/i;
+
+// Pulls saved slots from redbean and stages them in userFileDict so they
+// land in MEMFS during onRuntimeInitialized alongside the IWAD. Fails soft:
+// any error returns an empty result and DOOM boots with no persistence.
+async function preloadSaves() {
+  let listed;
+  try {
+    const r = await fetch('/list', { cache: 'no-store' });
+    if (!r.ok) {
+      console.info('Save bridge: /list HTTP ' + r.status + ' — running without persistence.');
+      return 0;
+    }
+    listed = await r.json();
+  } catch (err) {
+    console.info('Save bridge: /list unreachable (' + err.message + ') — file:// or no redbean. No persistence.');
+    return 0;
+  }
+  if (!listed || !Array.isArray(listed.slots) || listed.slots.length === 0) return 0;
+
+  let loaded = 0;
+  for (const meta of listed.slots) {
+    if (typeof meta.slot !== 'number') continue;
+    try {
+      const sr = await fetch('/load?slot=' + meta.slot, { cache: 'no-store' });
+      if (!sr.ok) {
+        console.warn('Save bridge: /load slot ' + meta.slot + ' HTTP ' + sr.status);
+        continue;
+      }
+      const bytes = new Uint8Array(await sr.arrayBuffer());
+      const filename = 'doomsav' + meta.slot + '.dsg';
+      userFileDict[filename] = ['s', bytes];
+      console.info('Save bridge: pre-loaded ' + filename + ' (' + bytes.length + ' bytes, ' + (meta.updated_at || '?') + ')');
+      loaded++;
+    } catch (err) {
+      console.warn('Save bridge: /load slot ' + meta.slot + ' failed: ' + err.message);
+    }
+  }
+  return loaded;
+}
+
+// Wire FS hooks so engine-written saves get POSTed to redbean. We set up
+// both `FS.trackingDelegate.onCloseFile` (the documented emscripten hook)
+// and a wrapped `FS.close` (belt-and-braces — different emscripten builds
+// route through different layers). saveBridgeArmed gates both to avoid
+// echoing our load-time injections.
+function installSaveBridge() {
+  if (typeof FS === 'undefined') return;
+
+  const onClose = function (path) {
+    if (!saveBridgeArmed || typeof path !== 'string') return;
+    const m = SAVE_SLOT_RE.exec(path);
+    if (!m) return;
+    const slot = parseInt(m[1], 10);
+    if (slot < 0 || slot > 5) return;
+    let bytes;
+    try {
+      bytes = FS.readFile(path);
+    } catch (err) {
+      console.warn('Save bridge: read-back failed for ' + path + ': ' + err.message);
+      return;
+    }
+    fetch('/save?slot=' + slot, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/octet-stream' },
+      body: bytes,
+    }).then(function (r) {
+      if (!r.ok) {
+        console.warn('Save bridge: POST /save?slot=' + slot + ' HTTP ' + r.status);
+      } else {
+        console.info('Save bridge: persisted slot ' + slot + ' (' + bytes.length + ' bytes)');
+      }
+    }).catch(function (err) {
+      console.warn('Save bridge: POST /save?slot=' + slot + ' failed: ' + err.message);
+    });
+  };
+
+  // Primary hook: emscripten's documented file-tracking delegate.
+  FS.trackingDelegate = FS.trackingDelegate || {};
+  const prevDelegate = FS.trackingDelegate.onCloseFile;
+  FS.trackingDelegate.onCloseFile = function (path) {
+    if (typeof prevDelegate === 'function') {
+      try { prevDelegate(path); } catch (e) { /* ignore */ }
+    }
+    onClose(path);
+  };
+
+  // Backup hook: wrap FS.close. Emscripten only fires the trackingDelegate
+  // when FS.trackingFlags has the corresponding bit set; the wrap here
+  // catches writes regardless.
+  const origClose = FS.close;
+  if (typeof origClose === 'function') {
+    FS.close = function (stream) {
+      const result = origClose.apply(this, arguments);
+      try {
+        if (stream && stream.path) onClose(stream.path);
+      } catch (e) { /* never let bridge errors break the engine */ }
+      return result;
+    };
+  }
+}
+
+// ----------------------------------------------------------------------
+// Doomstick auto-loader: fetch shareware WAD + saves, inject, boot.
+// ----------------------------------------------------------------------
+
+async function autoBoot() {
+  Module.setStatus('Fetching DOOM1.WAD...');
+  let buf;
+  try {
+    const r = await fetch('doom1.wad');
+    if (!r.ok) throw new Error('HTTP ' + r.status);
+    buf = await r.arrayBuffer();
+  } catch (err) {
+    Module.setStatus('ERROR fetching doom1.wad: ' + err.message + '<br>Did you run build-usb.sh?');
+    return;
+  }
+  console.info('Fetched DOOM1.WAD: ' + buf.byteLength + ' bytes');
+  userFileDict['doom1.wad'] = ['i', new Uint8Array(buf)];
+  Module.arguments = ['-iwad', 'doom1.wad'];
+
+  Module.setStatus('Restoring saves...');
+  const restored = await preloadSaves();
+  if (restored > 0) console.info('Save bridge: restored ' + restored + ' slot(s) from redbean.');
+
+  Module.setStatus('Loading WASM engine...');
+  _printText('Doomstick — DOOM via Dwasm/PrBoom+');
+  if (restored > 0) _printText('Restored ' + restored + ' save slot(s) from USB.');
+  _printText('');
+  const s = document.createElement('script');
+  s.src = 'index.js';
+  s.async = true;
+  s.onerror = () => Module.setStatus('ERROR: index.js failed to load.');
+  document.body.appendChild(s);
+}
+
+document.addEventListener('DOMContentLoaded', autoBoot);
+window.addEventListener('resize', () => Module.winResized && Module.winResized());
+</script>

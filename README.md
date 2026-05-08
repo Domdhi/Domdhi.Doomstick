@@ -57,9 +57,9 @@ assembles the full USB layout for you. You supply the USB and the bandwidth
 
   ☢  EMERGENCY BROADCAST · OFFLINE EMERGENCY ASSISTANCE NETWORK  ☣
 
-      CLASSIFICATION  ▸  PUBLIC               DOOMSTICK · v0.3 · 2026·05·06
+      CLASSIFICATION  ▸  PUBLIC               DOOMSTICK · v0.7 · 2026·05·08
       TRANSMISSION    ▸  OFFLINE              COSMOPOLITAN · CPU-ONLY · USB
-      AUTH            ▸  Apache-2.0           ENDPOINT · 127.0.0.1 : 8765
+      AUTH            ▸  Apache-2.0 + GPL     ENDPOINT · 127.0.0.1 : 8765
 
       ◉ NETWORK    [ lost ]
       ◉ POWER      [ usb · D:\ ]
@@ -97,13 +97,17 @@ This is a recipe — large binary artifacts (model weights, ISOs) live upstream 
 ```
 .
 ├── build-usb.sh / .ps1     One-shot script: fetch + assemble USB layout
-├── launchers/              start.{bat,command,sh} — the model-picker menu
+├── launchers/              start.{bat,command,sh} for AI core + 4 side arms
 ├── dashboard/              Web assets that deploy to USB root
 │   ├── index.html              Static dashboard
 │   └── README.txt              Plain-text version of this doc
 ├── args/                   Flag reference (mirrored into launchers; doesn't deploy)
-│   ├── e4b.args
-│   └── 26b.args
+├── ocr/                    Tesseract.js OCR static page (deploys as-is)
+├── maps/                   OSM .pbf landing zone + sideload README
+├── docs-offline/           DevDocs landing zone (manual setup)
+├── docs/
+│   ├── auxiliary-roadmap.md     What's shipped, what's pending
+│   └── setup-devdocs.md         Manual DevDocs walkthrough
 ├── usb-layout/             Empty skeleton showing the target USB structure
 ├── LICENSE                 Apache-2.0
 └── README.md               This file
@@ -112,31 +116,53 @@ This is a recipe — large binary artifacts (model weights, ISOs) live upstream 
 **What `build-usb.sh /mnt/usb` produces:**
 
 ```
-/mnt/usb/                                       ~22 GB total
+/mnt/usb/                                       ~22.7 GB total
 ├── 📄 index.html                     One-page dashboard. Open this first.
-├── 🚀 start.bat                       Windows launcher (double-click to chat)
-├── 🚀 start.command                   macOS launcher
-├── 🚀 start.sh                        Linux launcher
+├── 🚀 start.bat                       Windows AI launcher (double-click to chat)
+├── 🚀 start.command                   macOS AI launcher
+├── 🚀 start.sh                        Linux AI launcher
+├── 🚀 start-whisper.{bat,command,sh}  Audio → text  (port 8766)
+├── 🚀 start-wiki.{bat,command,sh}     Offline Wikipedia (port 8767)
+├── 🚀 start-ocr.{bat,command,sh}      Image → text   (browser only)
+├── 🚀 start-docs.{bat,command,sh}     DevDocs       (manual setup)
+├── 🚀 start-doom.{bat,command,sh}     DOOM via redbean (port 8768)
 ├── 📜 README.txt                      Short version of this doc
 │
-└── 🧠 ai-kit/                         The brain
-    ├── runtime/
-    │   ├── llamafile                  43 MB inference engine (Linux/macOS)
-    │   └── llamafile.exe              Same binary, .exe-renamed for Windows
-    └── models/
-        ├── gemma-4-E4B-it-Q4_K_M.gguf            5 GB,  daily driver
-        ├── gemma-4-26B-A4B-it-UD-Q4_K_M.gguf    17 GB, big brain MoE
-        └── embeddinggemma-300m-qat-Q8_0.gguf    329 MB, for RAG (no chat UI yet)
+├── 🧠 ai-kit/                         AI core + side-arm binaries
+│   ├── runtime/
+│   │   ├── llamafile                       43 MB inference engine (Linux/macOS)
+│   │   └── llamafile.exe                   Same binary, .exe-renamed for Windows
+│   ├── models/
+│   │   ├── gemma-4-E4B-it-Q4_K_M.gguf            5 GB,  daily driver
+│   │   ├── gemma-4-26B-A4B-it-UD-Q4_K_M.gguf    17 GB, big brain MoE
+│   │   └── embeddinggemma-300m-qat-Q8_0.gguf    329 MB, for RAG (no chat UI yet)
+│   ├── whisper/
+│   │   └── whisper-base.en.llamafile             148 MB, audio → text
+│   ├── kiwix/
+│   │   ├── linux/, mac/, win/                    kiwix-serve binaries (~6 MB each)
+│   ├── redbean/
+│   │   ├── redbean.com                            5.5 MB local platform layer (port 8768)
+│   │   ├── saves.db                               DOOM saves (SQLite, created on first save)
+│   │   └── .init.lua                              route handlers (/health, /save, /load, /list, /tts)
+│   └── sherpa-tts/
+│       ├── linux/, mac/, win/                     sherpa-onnx-offline-tts per OS (~30 MB each)
+│       └── models/supertonic/                     Supertonic int8 ONNX bundle (~120 MB)
+│
+├── 📚 zim/wikipedia_en_simple_all_nopic_2024-06.zim   ~395 MB (default)
+├── 🔤 ocr/                            tesseract.js + eng pack    ~15 MB
+├── 🗺  maps/<region>.osm.pbf          OSM regional data           ~700 KB+ (Monaco default)
+├── 📖 docs-offline/                   DevDocs (manual setup, not auto-fetched)
+└── 🪦 doom/                           Dwasm + shareware DOOM1.WAD  ~7.4 MB (GPL-2.0)
 ```
 
 **What the kit does *not* ship** (BYO if you want them):
 
 - Bootable rescue ISOs (Ubuntu / SystemRescue / Hiren's BootCD PE) + [Ventoy](https://www.ventoy.net/)
 - Portable Windows tools (PortableGit, VS Code Portable, ripgrep, fzf, jq, 7-Zip)
-- Offline Wikipedia ([Kiwix](https://kiwix.org) `.zim` files)
-- Offline maps, offline TTS/STT, etc.
+- Piper TTS (text → audio, completes the voice stack with whisperfile)
+- stable-diffusion.cpp (offline image generation), age-encrypted vault, ffmpeg, …
 
-These are listed in §09 below — most are one-line additions to the build script when you feel like it.
+These and more are tracked in [`docs/auxiliary-roadmap.md`](docs/auxiliary-roadmap.md) — most are one-line additions to the build script when you feel like it.
 
 <br>
 
@@ -151,13 +177,32 @@ git clone https://github.com/Domdhi/Domdhi.Doomstick.git
 cd Domdhi.Doomstick
 
 # Linux / macOS / WSL:
-./build-usb.sh /mnt/usb              # path to mounted USB
+./build-usb.sh /mnt/usb              # opens the build wizard
 
 # Windows (native PowerShell, run as Admin if writing to USB root):
 .\build-usb.ps1 D:\
 ```
 
-The script downloads the runtime (~43 MB) and three GGUFs (~22 GB), copies the launchers and dashboard, and prints the exact `start.*` path to double-click. Resumable — re-running it skips files that already exist with the right size.
+The first run opens an **interactive wizard**: pick a bundle (`tiny / balanced / full`) for one-keystroke first-time UX, or `custom` to choose models, Wikipedia language, OSM region, Whisper voice variant, OCR languages, and side-arm toggles individually. Settings save to `<USB>/build-usb-config.sh` so re-running on the same stick skips the wizard.
+
+| Bundle      | Size     | What you get                                                                              |
+|-------------|----------|-------------------------------------------------------------------------------------------|
+| `tiny`      | ~5.4 GB  | E4B model + Simple-English Wikipedia. No maps, no voice, no DOOM, no TTS. Smallest useful. |
+| `balanced`  | ~6.1 GB  | E4B + Embedding + Simple Wikipedia + Monaco maps + all side-arms + redbean + DOOM + TTS.   |
+| `full`      | ~22.9 GB | Everything (3 models + side-arms + redbean + DOOM + TTS). Matches `-y` non-interactive defaults. |
+
+**Modes:**
+
+```bash
+./build-usb.sh /mnt/usb                       # wizard (or sources existing config)
+./build-usb.sh -y /mnt/usb                    # non-interactive — all defaults (full bundle)
+./build-usb.sh -i /mnt/usb                    # force wizard even if config exists
+./build-usb.sh -c saved-config.sh /mnt/usb    # source a named config
+./build-usb.sh -n /mnt/usb                    # dry-run: print resolved config, don't fetch
+./build-usb.sh -h                             # full help
+```
+
+The script downloads the runtime (~43 MB) plus whatever models / side arms you picked. Resumable — re-running skips files that already exist with the right size.
 
 ### Use the kit
 
@@ -324,23 +369,34 @@ Yes — and you should, for any session longer than a few minutes. Local SSD loa
 
 <br>
 
-## 📡 §09 · Auxiliary Equipment (Pending)
+## 📡 §09 · Auxiliary Equipment
 
-The "cool shit we haven't built yet" list, ranked by payoff per gigabyte:
+Five tools shipped with v0.4 — see [`docs/auxiliary-roadmap.md`](docs/auxiliary-roadmap.md) for the full living menu.
+
+**Now in the kit:**
+
+| Status | Item | Default size | What it adds |
+|---|------|------|-------------|
+| ✅ | **Whisperfile** (base.en) | ~148 MB | Audio → text via OpenAI Whisper. APE polyglot, port 8766. |
+| ✅ | **Tesseract OCR** (tesseract.js) | ~15 MB | Image → text. Pure browser, no server, runs from `file://`. |
+| ✅ | **Kiwix + Wikipedia** | ~395 MB (Simple EN) | Offline Wikipedia. Drop bigger ZIMs into `zim/`; kiwix-serve picks them up. Port 8767. |
+| ⚠ | **DevDocs offline** | varies | Programming reference. Manual setup — see [`docs/setup-devdocs.md`](docs/setup-devdocs.md). |
+| ✅ | **Organic Maps + .pbf** | ~700 KB (Monaco) | OSM regional data; sideload to phone. See [`maps/README.md`](maps/README.md) to swap region. |
+| ✅ | **redbean** (3.0.0) | ~5.5 MB | Single-file APE webserver, port 8768. Local platform layer for tools that need real HTTP. Cosmopolitan family, same as llamafile. |
+| ✅ | **DOOM** (Dwasm + shareware WAD) | ~7.4 MB | Browser DOOM via emscripten/PrBoom+, served by redbean. Plug-and-play; no host install. |
+| ✅ | **USB-resident DOOM saves** (v0.6) | tiny | Saves persist to `ai-kit/redbean/saves.db` via redbean's `/save /load /list`. Pre-fetched on boot, hooks `FS.trackingDelegate.onCloseFile` to capture in-game saves. Travel across hosts. |
+| ✅ | **TTS via Sherpa-ONNX + Supertonic** (v0.7) | ~210 MB | Text → audio. POST `text/plain` to `:8768/tts`, get `audio/wav` back. Sherpa-ONNX v1.13.1 native C++ runtime per OS (no Python on host) + Supertonic int8 (~99M params, ranks high on CPU TTS — RTF 0.3 on a literal e-reader). Pivoted away from Kokoro to avoid a Python-on-host dependency. Full research: [`docs/research/tts-rag-2026-05-08.md`](docs/research/tts-rag-2026-05-08.md). |
+
+**Still pending** (ranked by payoff):
 
 | ⭐ | Item | Size | What it adds |
 |---|------|------|-------------|
-| 🥇 | **Whisperfile** | ~3 GB | Audio → text. First leg of an offline voice stack (mic → whisper → Gemma → speaker). |
-| 🥇 | **Tesseract OCR + lang data** | ~70 MB | Photo / scan → text. Pipes naturally into the LLM. |
-| 🥇 | **redbean** | ~6 MB | Single-file APE webserver with Lua + SQLite. Same Cosmopolitan family as llamafile. |
-| 🥈 | **Kiwix + Wikipedia .zim** | ~14 GB | Offline Wikipedia. The big one. |
-| 🥈 | **Piper TTS** | ~100 MB | Text → audio. Completes the voice stack. |
-| 🥉 | **stable-diffusion.cpp + SDXL Turbo Q4** | ~3 GB | Offline image gen. |
-| 🥉 | **devdocs offline** | ~1 GB | Static-HTML programming reference (MDN, Python, man pages). |
-| 🥉 | **age-encrypted recovery vault** | tiny | SSH/GPG keys, dotfiles, 2FA codes, scanned IDs in one encrypted tarball. |
+| 🥇 | **EmbeddingGemma RAG** (via redbean /rag/{ingest,query}) | shared with EmbedGemma | Vector index over `workspace/` folder using **sqlite-vec** (vectors live in SQLite alongside `saves.db`). EmbeddingGemma-300M already shipped. The wedge feature. Full design: [`docs/research/tts-rag-2026-05-08.md`](docs/research/tts-rag-2026-05-08.md). |
+| 🥈 | **stable-diffusion.cpp + SDXL Turbo Q4** | ~3 GB | Offline image gen. |
+| 🥈 | **age-encrypted recovery vault** | tiny | SSH/GPG keys, dotfiles, 2FA codes, scanned IDs in one encrypted tarball. |
 | 🥉 | **Project Gutenberg subset + Calibre Portable** | ~3 GB | Offline classic books. |
 | 🥉 | **Static ffmpeg** | ~80 MB | Media swiss-army knife; pairs with whisperfile for live captions. |
-| 🥉 | **Organic Maps + regional .pbf** | ~500 MB | Offline maps + routing. |
+| 🥉 | **Bigger Wikipedia ZIMs** | up to ~50 GB | `wikipedia_en_top_nopic` (~6 GB) is the sweet spot. |
 
 PRs welcome.
 
@@ -397,6 +453,15 @@ Embedded artifacts retain their upstream licenses:
 | Gemma 4 weights | Apache 2.0 + [Google's Gemma terms](https://ai.google.dev/gemma/terms) |
 | EmbeddingGemma | Apache 2.0 + [Google's Gemma terms](https://ai.google.dev/gemma/terms) |
 | unsloth quantizations | Apache 2.0 |
+| redbean | ISC ([jart/cosmopolitan](https://github.com/jart/cosmopolitan)) |
+| Dwasm bundle (`doom/index.{js,data,wasm}` + our wrapper) | **GPL-2.0** ([GMH-Code/Dwasm](https://github.com/GMH-Code/Dwasm)) |
+| Shareware DOOM1.WAD | Freely redistributable per id Software (Episode 1 only) |
+
+> [!IMPORTANT]
+> **License boundary — `doom/` is GPL-2.0.** The kit as a whole is Apache-2.0
+> but the `doom/` subdirectory inherits GPL-2.0 from upstream Dwasm. See
+> [`doom/NOTICE.md`](doom/NOTICE.md) for the full attribution and the
+> rules for modifying or redistributing files in that directory.
 
 > [!WARNING]
 > The Gemma terms add a Prohibited Use Policy on top of Apache 2.0. **Read it before redistributing the weights commercially.**
@@ -422,7 +487,7 @@ _________________________/_ __ \_____________
 ╲╱╲╱╲╱╲╱╲╱╲╱╲╱╲╱╲╱╲╱╲╱╲╱╲╱╲╱╲╱╲╱╲╱╲╱╲╱╲╱╲╱╲╱╲╱╲╱╲╱╲╱╲╱╲╱╲╱╲╱╲╱╲╱╲╱╲╱╲╱╲╱╲╱╲
 
               ╔════════════════════════════════╗
-              ║   DECLASSIFIED · 2026·05·06    ║
+              ║   DECLASSIFIED · 2026·05·08    ║
               ║      — USE WITH CAUTION —      ║
               ╚════════════════════════════════╝
 
@@ -431,6 +496,6 @@ _________________________/_ __ \_____________
 
 **stay weird. stay prepared. stay offline.**
 
-`v0.3 · "external weights + build script" · 2026·05·06`
+`v0.7 · "the bunker speaks back" · 2026·05·08`
 
 </div>

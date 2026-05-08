@@ -1,0 +1,285 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>DOOMSTICK · OCR</title>
+<style>
+:root {
+  --void:   #0a0a08;
+  --paper:  #ece2c8;
+  --bone:   #c8bea2;
+  --rad:    #fcd000;
+  --rust:   #4a3a1d;
+  --phos:   #6df54a;
+  --blood:  #c63d2f;
+}
+* { box-sizing: border-box; }
+body {
+  margin: 0;
+  font-family: "JetBrains Mono", "Consolas", monospace;
+  background: var(--void);
+  color: var(--paper);
+  min-height: 100vh;
+  padding: 32px 24px;
+}
+h1 {
+  font-family: "Big Shoulders Stencil Display", Impact, sans-serif;
+  font-weight: 800;
+  font-size: 48px;
+  margin: 0 0 8px;
+  letter-spacing: 0.04em;
+}
+.lede {
+  color: var(--bone);
+  margin: 0 0 28px;
+  font-size: 14px;
+  max-width: 720px;
+  line-height: 1.65;
+}
+.layout { display: grid; grid-template-columns: 1fr 1fr; gap: 24px; max-width: 1200px; margin: 0 auto; }
+@media (max-width: 800px) { .layout { grid-template-columns: 1fr; } }
+.panel {
+  background: #16140e;
+  border: 1px solid var(--rust);
+  padding: 22px;
+}
+.panel h2 {
+  margin: 0 0 12px;
+  font-size: 14px;
+  letter-spacing: 0.18em;
+  color: var(--rad);
+  text-transform: uppercase;
+}
+input[type=file] {
+  display: block;
+  width: 100%;
+  padding: 14px;
+  background: var(--void);
+  color: var(--paper);
+  border: 1px dashed var(--rust);
+  font-family: inherit;
+  cursor: pointer;
+}
+.dropzone {
+  padding: 36px 18px;
+  border: 2px dashed var(--rust);
+  text-align: center;
+  color: var(--bone);
+  cursor: pointer;
+  transition: border-color 0.15s, background 0.15s;
+  margin-bottom: 16px;
+}
+.dropzone:hover, .dropzone.over {
+  border-color: var(--rad);
+  background: rgba(252, 208, 0, 0.05);
+}
+.preview {
+  margin-top: 14px;
+  max-width: 100%;
+  max-height: 280px;
+  border: 1px solid var(--rust);
+  display: none;
+}
+button {
+  display: inline-block;
+  margin-top: 12px;
+  font-family: "Big Shoulders Stencil Display", Impact, sans-serif;
+  font-weight: 800;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  font-size: 14px;
+  padding: 12px 22px;
+  background: var(--rad);
+  color: var(--void);
+  border: none;
+  border-bottom: 4px solid #c8a000;
+  cursor: pointer;
+}
+button:disabled { background: var(--rust); color: var(--bone); border-bottom-color: var(--void); cursor: not-allowed; }
+button:hover:not(:disabled) { background: var(--paper); }
+.status {
+  margin-top: 14px;
+  font-size: 13px;
+  color: var(--bone);
+  min-height: 20px;
+}
+.status.error { color: var(--blood); }
+.status.done { color: var(--phos); }
+progress { width: 100%; height: 8px; margin-top: 10px; }
+.output {
+  width: 100%;
+  min-height: 360px;
+  background: var(--void);
+  color: var(--phos);
+  border: 1px solid var(--rust);
+  font-family: "VT323", "Courier New", monospace;
+  font-size: 16px;
+  line-height: 1.5;
+  padding: 14px;
+  white-space: pre-wrap;
+  resize: vertical;
+}
+.copy {
+  margin-top: 8px;
+  background: transparent;
+  color: var(--rad);
+  border: 1px solid var(--rad);
+  border-bottom-width: 1px;
+  padding: 8px 14px;
+  font-size: 12px;
+}
+.copy:hover { background: var(--rad); color: var(--void); }
+.note {
+  margin-top: 18px;
+  font-size: 12px;
+  color: #8a8068;
+  line-height: 1.7;
+}
+.note code { color: var(--phos); background: var(--void); padding: 0 4px; }
+.back {
+  display: inline-block;
+  margin-bottom: 18px;
+  font-size: 12px;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  color: var(--rad);
+  text-decoration: none;
+}
+.back:hover { color: var(--paper); }
+</style>
+</head>
+<body>
+
+<a class="back" href="../index.html">&larr; Back to Dashboard</a>
+
+<h1>OCR · Image to Text</h1>
+<p class="lede">
+  Drop an image with text in it. Runs <strong>entirely in your browser</strong> via tesseract.js — no upload, no
+  server. Default language pack is English. To add other languages, drop their <code>.traineddata</code> files
+  into <code>ocr/lang-data/</code> and edit the <code>LANGS</code> select below.
+</p>
+
+<div class="layout">
+
+  <section class="panel">
+    <h2>// Source</h2>
+    <div class="dropzone" id="drop">
+      <div>Drag &amp; drop an image here</div>
+      <div style="margin-top: 6px; font-size: 11px;">or click to browse</div>
+    </div>
+    <input type="file" id="file" accept="image/*" style="display:none">
+    <select id="lang" style="margin-top:10px; padding:8px; width:100%; background: var(--void); color: var(--paper); border: 1px solid var(--rust); font-family: inherit;">
+      <option value="eng" selected>English (eng)</option>
+    </select>
+    <button id="run" disabled>Run OCR</button>
+    <div class="status" id="status">Awaiting image…</div>
+    <progress id="prog" value="0" max="1" style="display:none;"></progress>
+    <img class="preview" id="preview" alt="">
+    <p class="note">
+      Local-only. The page is a static HTML file — opening it via <code>file://</code> on Windows / macOS / Linux
+      works the same. No data leaves your machine.
+    </p>
+  </section>
+
+  <section class="panel">
+    <h2>// Recognized Text</h2>
+    <textarea class="output" id="out" placeholder="(output will appear here)"></textarea>
+    <button class="copy" id="copy">Copy to Clipboard</button>
+  </section>
+
+</div>
+
+<!-- Local tesseract.js bundle. Files are vendored into ocr/lib/ by build-usb.{sh,ps1}. -->
+<script src="lib/tesseract.min.js"></script>
+<script>
+(function () {
+  var fileInput = document.getElementById('file');
+  var drop      = document.getElementById('drop');
+  var preview   = document.getElementById('preview');
+  var runBtn    = document.getElementById('run');
+  var statusEl  = document.getElementById('status');
+  var progEl    = document.getElementById('prog');
+  var outEl     = document.getElementById('out');
+  var langSel   = document.getElementById('lang');
+  var copyBtn   = document.getElementById('copy');
+
+  var currentBlob = null;
+
+  function setStatus(msg, kind) {
+    statusEl.textContent = msg;
+    statusEl.className = 'status' + (kind ? ' ' + kind : '');
+  }
+
+  function loadFile(f) {
+    if (!f || !f.type.startsWith('image/')) {
+      setStatus('Please choose an image file.', 'error');
+      return;
+    }
+    currentBlob = f;
+    var reader = new FileReader();
+    reader.onload = function (e) {
+      preview.src = e.target.result;
+      preview.style.display = 'block';
+      setStatus('Loaded ' + f.name + ' (' + Math.round(f.size / 1024) + ' KB). Click Run OCR.');
+      runBtn.disabled = false;
+    };
+    reader.readAsDataURL(f);
+  }
+
+  drop.addEventListener('click', function () { fileInput.click(); });
+  fileInput.addEventListener('change', function (e) { loadFile(e.target.files[0]); });
+  ['dragenter', 'dragover'].forEach(function (ev) {
+    drop.addEventListener(ev, function (e) { e.preventDefault(); drop.classList.add('over'); });
+  });
+  ['dragleave', 'drop'].forEach(function (ev) {
+    drop.addEventListener(ev, function (e) { e.preventDefault(); drop.classList.remove('over'); });
+  });
+  drop.addEventListener('drop', function (e) {
+    if (e.dataTransfer.files && e.dataTransfer.files[0]) loadFile(e.dataTransfer.files[0]);
+  });
+
+  copyBtn.addEventListener('click', function () {
+    if (!outEl.value) return;
+    navigator.clipboard && navigator.clipboard.writeText(outEl.value).then(
+      function () { copyBtn.textContent = '✓ Copied'; setTimeout(function () { copyBtn.textContent = 'Copy to Clipboard'; }, 1400); }
+    );
+  });
+
+  runBtn.addEventListener('click', function () {
+    if (!currentBlob) return;
+    if (typeof Tesseract === 'undefined') {
+      setStatus('tesseract.js not found. Did the build script populate ocr/lib/?', 'error');
+      return;
+    }
+    runBtn.disabled = true;
+    progEl.style.display = 'block';
+    progEl.value = 0;
+    outEl.value = '';
+    setStatus('Recognizing…');
+
+    Tesseract.recognize(currentBlob, langSel.value, {
+      // Force everything local — no CDN fetches.
+      workerPath:    'lib/worker.min.js',
+      corePath:      'lib/tesseract-core.wasm.js',
+      langPath:      'lang-data',
+      cacheMethod:   'none',
+      logger: function (m) {
+        if (m.status) setStatus(m.status + (m.progress != null ? ' · ' + Math.round(m.progress * 100) + '%' : ''));
+        if (m.progress != null) progEl.value = m.progress;
+      }
+    }).then(function (result) {
+      outEl.value = result.data.text;
+      setStatus('Done. ' + result.data.text.split(/\s+/).filter(Boolean).length + ' words.', 'done');
+      progEl.value = 1;
+      runBtn.disabled = false;
+    }).catch(function (err) {
+      setStatus('Error: ' + err.message, 'error');
+      runBtn.disabled = false;
+    });
+  });
+})();
+</script>
+
+</body>
+</html>

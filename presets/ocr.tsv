@@ -1,0 +1,19 @@
+# Tesseract.js language packs from tessdata_fast (smallest accurate variant).
+# https://github.com/tesseract-ocr/tessdata_fast
+# URL is computed at build time from the code:
+#   https://github.com/tesseract-ocr/tessdata_fast/raw/main/<code>.traineddata
+# bytes is approximate (varies by language).
+#
+# code	label	bytes
+eng	English	12000000
+spa	Spanish	5000000
+fra	French	5500000
+deu	German	7500000
+ita	Italian	5000000
+por	Portuguese	4500000
+rus	Russian	8000000
+jpn	Japanese	6000000
+chi_sim	Chinese (Simplified)	8000000
+chi_tra	Chinese (Traditional)	7000000
+ara	Arabic	5500000
+hin	Hindi	7500000
