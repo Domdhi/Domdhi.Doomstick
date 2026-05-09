@@ -57,7 +57,7 @@ assembles the full USB layout for you. You supply the USB and the bandwidth
 
   ☢  EMERGENCY BROADCAST · OFFLINE EMERGENCY ASSISTANCE NETWORK  ☣
 
-      CLASSIFICATION  ▸  PUBLIC               DOOMSTICK · v0.7.2 · 2026·05·08
+      CLASSIFICATION  ▸  PUBLIC               DOOMSTICK · v0.8.0 · 2026·05·09
       TRANSMISSION    ▸  OFFLINE              COSMOPOLITAN · CPU-ONLY · USB
       AUTH            ▸  Apache-2.0 + GPL     ENDPOINT · 127.0.0.1 : 8765
 
@@ -97,13 +97,17 @@ This is a recipe — large binary artifacts (model weights, ISOs) live upstream 
 ```
 .
 ├── build-usb.sh / .ps1     One-shot script: fetch + assemble USB layout
-├── launchers/              start.{bat,command,sh} for AI core + 4 side arms
+├── presets/                TSV menu data (bundles, ZIM, OSM, Whisper, OCR)
+├── launchers/              start.{bat,command,sh} for AI core + 6 side arms
 ├── dashboard/              Web assets that deploy to USB root
 │   ├── index.html              Static dashboard
+│   ├── chat/                   Vendored Hollama 0.35.4 chat tab (v0.8+)
 │   └── README.txt              Plain-text version of this doc
+├── redbean/                Local platform layer — `.init.lua` route handlers
 ├── args/                   Flag reference (mirrored into launchers; doesn't deploy)
 ├── ocr/                    Tesseract.js OCR static page (deploys as-is)
 ├── maps/                   OSM .pbf landing zone + sideload README
+├── doom/                   Dwasm bundle + DOOM1.WAD wrapper (GPL-2.0 subdir)
 ├── docs-offline/           DevDocs landing zone (manual setup)
 ├── docs/
 │   ├── auxiliary-roadmap.md     What's shipped, what's pending
@@ -118,7 +122,7 @@ This is a recipe — large binary artifacts (model weights, ISOs) live upstream 
 ```
 /mnt/usb/                                       ~22.7 GB total
 ├── 📄 index.html                     One-page dashboard. Open this first.
-├── 🚀 start.bat                       Windows AI launcher (double-click to chat)
+├── 🚀 start.bat                       Windows AI launcher (model picker + chat tab)
 ├── 🚀 start.command                   macOS AI launcher
 ├── 🚀 start.sh                        Linux AI launcher
 ├── 🚀 start-whisper.{bat,command,sh}  Audio → text  (port 8766)
@@ -126,7 +130,10 @@ This is a recipe — large binary artifacts (model weights, ISOs) live upstream 
 ├── 🚀 start-ocr.{bat,command,sh}      Image → text   (browser only)
 ├── 🚀 start-docs.{bat,command,sh}     DevDocs       (manual setup)
 ├── 🚀 start-doom.{bat,command,sh}     DOOM via redbean (port 8768)
+├── 🚀 start-embed.{bat,command,sh}    Embedding side-arm for RAG (port 8769, v0.8+)
 ├── 📜 README.txt                      Short version of this doc
+├── 💬 chat/                           Vendored Hollama chat tab (file://, v0.8+)
+├── 📓 workspace/<name>/docs/, journal/  Per-workspace RAG corpus (v0.8+)
 │
 ├── 🧠 ai-kit/                         AI core + side-arm binaries
 │   ├── runtime/
@@ -135,15 +142,16 @@ This is a recipe — large binary artifacts (model weights, ISOs) live upstream 
 │   ├── models/
 │   │   ├── gemma-4-E4B-it-Q4_K_M.gguf            5 GB,  daily driver
 │   │   ├── gemma-4-26B-A4B-it-UD-Q4_K_M.gguf    17 GB, big brain MoE
-│   │   └── embeddinggemma-300m-qat-Q8_0.gguf    329 MB, for RAG (no chat UI yet)
+│   │   └── embeddinggemma-300m-qat-Q8_0.gguf    329 MB, powers v0.8 RAG (live)
 │   ├── whisper/
 │   │   └── whisper-small.en.llamafile           497 MB, audio → text
 │   ├── kiwix/
 │   │   ├── linux/, mac/, win/                    kiwix-serve binaries (~6 MB each)
 │   ├── redbean/
 │   │   ├── redbean.com                            5.5 MB local platform layer (port 8768)
-│   │   ├── saves.db                               DOOM saves (SQLite, created on first save)
-│   │   └── .init.lua                              route handlers (/health, /save, /load, /list, /tts)
+│   │   ├── saves.db                               DOOM saves + chat sessions + RAG chunks (SQLite)
+│   │   └── .init.lua                              route handlers (/health, /save, /load, /list,
+│   │                                              /tts, /rag/*, /chat/*, /journal/*)
 │   └── sherpa-tts/
 │       ├── linux/, mac/, win/                     sherpa-onnx-offline-tts per OS (~30 MB each)
 │       └── models/supertonic/                     Supertonic int8 ONNX bundle (~120 MB)
@@ -253,13 +261,13 @@ Llamafile, redbean, and whisperfile are APE polyglots — they execute on x86_64
 
 ## 🧠 §04 · Payload Manifest
 
-Three weights ship with the kit. Two appear in the launcher menu; the third is for retrieval, not chat.
+Three weights ship with the kit. Two appear in the launcher menu; the third powers the v0.8 RAG layer behind the chat tab.
 
 | Callsign | Size | RAM | Speed (CPU) | Quant | Role | Status |
 |---|---|---|---|---|---|---|
 | **GEMMA-4 / E4B** | 5.0 GB | ≥ 8 GB | ~15 t/s | `Q4_K_M` | Daily driver — **4.5 B effective parameters** (8 B with embeddings). Chat, code, summaries, translation. Good enough for ~95% of normal questions. | `🟢 FIELD READY` |
 | **GEMMA-4 / 26B-A4B** | 17 GB | ≥ 18 GB | ~10 t/s | `UD-Q4_K_M` (MoE) | Mixture-of-Experts — **26 B total / 3.8 B active per token**. Stronger reasoning and longer-context recall, faster than its file size suggests. | `🟡 HEAVY ORDNANCE` |
-| **EMBEDGEMMA / 300M** | 329 MB | minimal | n/a | `Q8 QAT` | Sentence embeddings for RAG. Future tools will use it to chat with documents. Not in the launcher menu. | `🤍 QUARTERMASTER` |
+| **EMBEDGEMMA / 300M** | 329 MB | minimal | n/a | `Q8 QAT` | Sentence embeddings powering the v0.8 RAG layer — `#filename` autocomplete in the chat tab, journal auto-ingest, document Q&A via `/rag/query`. Booted on demand by `start-embed.*` on port 8769. | `🟢 FIELD READY` |
 
 All weights are quantized via [unsloth](https://huggingface.co/unsloth) (Apache 2.0). The runtime is [llamafile 0.10.1](https://github.com/Mozilla-Ocho/llamafile) (Mozilla, Apache 2.0). The base Gemma 4 weights are subject to [Google's Gemma terms](https://ai.google.dev/gemma/terms).
 
@@ -394,11 +402,14 @@ Yes — and you should, for any session longer than a few minutes. Local SSD loa
 > [!TIP]
 > **Long session?** Copy `ai-kit/runtime/llamafile(.exe)` and the model GGUF to your host's local SSD. Generation speed is identical once loaded — the USB only matters for the initial model load, and exFAT is 3-4× slower than ext4/NTFS/APFS for that.
 
+> [!WARNING]
+> **Windows Defender false-positive on first run.** Some Windows hosts will quarantine `llamafile.exe` and/or `redbean.com.exe` with a generic verdict (e.g. `Trojan:Win32/ClickFix.CCJ!MTB`). This is a known false-positive against [Cosmopolitan](https://github.com/jart/cosmopolitan) APE polyglots — the same single binary boots on Windows, Linux, and macOS, which trips heuristics tuned for normal single-OS PE32 executables. Both binaries are unmodified upstream releases (Mozilla-Ocho llamafile 0.10.1, redbean 3.0.0 from redbean.dev) with their own published SHA-256 checksums. To proceed: open **Windows Security → Protection history → Allow** on the quarantined item, or add the USB drive letter to Defender exclusions. See [`dashboard/README.txt`](dashboard/README.txt) on the USB for the full walkthrough.
+
 <br>
 
 ## 📡 §09 · Auxiliary Equipment
 
-Five tools shipped with v0.4 — see [`docs/auxiliary-roadmap.md`](docs/auxiliary-roadmap.md) for the full living menu.
+Eight tools shipped from v0.4 through v0.8 — see [`docs/auxiliary-roadmap.md`](docs/auxiliary-roadmap.md) for the full living menu.
 
 **Now in the kit:**
 
@@ -413,13 +424,13 @@ Five tools shipped with v0.4 — see [`docs/auxiliary-roadmap.md`](docs/auxiliar
 | ✅ | **DOOM** (Dwasm + shareware WAD) | ~7.4 MB | Browser DOOM via emscripten/PrBoom+, served by redbean. Plug-and-play; no host install. |
 | ✅ | **USB-resident DOOM saves** (v0.6) | tiny | Saves persist to `ai-kit/redbean/saves.db` via redbean's `/save /load /list`. Pre-fetched on boot, hooks `FS.trackingDelegate.onCloseFile` to capture in-game saves. Travel across hosts. |
 | ✅ | **TTS via Sherpa-ONNX + Supertonic** (v0.7) | ~210 MB | Text → audio. POST `text/plain` to `:8768/tts`, get `audio/wav` back. Sherpa-ONNX v1.13.1 native C++ runtime per OS (no Python on host) + Supertonic int8 (~99M params, ranks high on CPU TTS — RTF 0.3 on a literal e-reader). Pivoted away from Kokoro to avoid a Python-on-host dependency. Full research: [`docs/research/tts-rag-2026-05-08.md`](docs/research/tts-rag-2026-05-08.md). |
+| ✅ | **EmbeddingGemma RAG + chat tab + journal** (v0.8) | shared with EmbedGemma + ~3.5 MB Hollama vendor | Vector index over `workspace/<name>/docs/` via redbean's `/rag/ingest` + `/rag/query` endpoints. Pure-Lua cosine over `embedding BLOB` columns (FTS5 isn't available in redbean's bundled lsqlite3, hence the in-Lua scan; see `redbean/lua/rag-cosine.lua` for the implementation). Vendored Hollama 0.35.4 chat tab at `chat/index.html` with five `_extras-*.js` adapters (`#filename` autocomplete, workspace dropdown, server-backed session persistence via `/chat/save`, three-server provider seed, daily-journal sidebar via `/journal/append`). Embedding side-arm `start-embed.*` boots EmbeddingGemma-300M on port 8769 on demand. |
 
 **Still pending** (ranked by payoff):
 
 | ⭐ | Item | Size | What it adds |
 |---|------|------|-------------|
-| 🥇 | **EmbeddingGemma RAG** (via redbean /rag/{ingest,query}) | shared with EmbedGemma | Vector index over `workspace/` folder using **sqlite-vec** (vectors live in SQLite alongside `saves.db`). EmbeddingGemma-300M already shipped. The wedge feature. Full design: [`docs/research/tts-rag-2026-05-08.md`](docs/research/tts-rag-2026-05-08.md). |
-| 🥈 | **stable-diffusion.cpp + SDXL Turbo Q4** | ~3 GB | Offline image gen. |
+| 🥇 | **stable-diffusion.cpp + SDXL Turbo Q4** | ~3 GB | Offline image gen. |
 | 🥈 | **age-encrypted recovery vault** | tiny | SSH/GPG keys, dotfiles, 2FA codes, scanned IDs in one encrypted tarball. |
 | 🥉 | **Project Gutenberg subset + Calibre Portable** | ~3 GB | Offline classic books. |
 | 🥉 | **Static ffmpeg** | ~80 MB | Media swiss-army knife; pairs with whisperfile for live captions. |
@@ -514,7 +525,7 @@ _________________________/_ __ \_____________
 ╲╱╲╱╲╱╲╱╲╱╲╱╲╱╲╱╲╱╲╱╲╱╲╱╲╱╲╱╲╱╲╱╲╱╲╱╲╱╲╱╲╱╲╱╲╱╲╱╲╱╲╱╲╱╲╱╲╱╲╱╲╱╲╱╲╱╲╱╲╱╲╱╲╱╲
 
               ╔════════════════════════════════╗
-              ║   DECLASSIFIED · 2026·05·08    ║
+              ║   DECLASSIFIED · 2026·05·09    ║
               ║      — USE WITH CAUTION —      ║
               ╚════════════════════════════════╝
 
@@ -523,6 +534,6 @@ _________________________/_ __ \_____________
 
 **stay weird. stay prepared. stay offline.**
 
-`v0.7.2 · "phone home" · 2026·05·08`
+`v0.8.0 · "the wedge" · 2026·05·09`
 
 </div>

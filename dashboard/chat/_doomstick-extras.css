@@ -1,0 +1,63 @@
+/*
+ * _doomstick-extras.css
+ * Shared styling for the Doomstick adapter layer injected into Hollama.
+ *
+ * Stories that extend this file:
+ *   S3.1 (_extras-rag.js)      — #filename autocomplete dropdown
+ *   S3.2 (_extras-workspace.js) — workspace selector above model picker
+ *   S3.3 (_extras-sessions.js) — session save status indicator
+ *   S4.2 (_extras-journal.js)  — sidebar journal tab + editor panel
+ *
+ * S2.6 adds only the bare scaffold: popup stub + toast animation.
+ * Wave 3 agents fill in the real component styling within these classes.
+ */
+
+/* ── Popup stub (Wave 3 will flesh this out) ─────────────────────────── */
+.doomstick-popup {
+  display: none; /* Wave 3 toggles via .doomstick-popup--open */
+  position: fixed;
+  top: var(--ds-popup-top, 4rem);
+  left: var(--ds-popup-left, 1rem);
+  z-index: 9000;
+  background: var(--color-shade-1, #fff);
+  border: 1px solid var(--color-shade-4, #e5e7eb);
+  border-radius: 0.5rem;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.12);
+  min-width: 16rem;
+  max-width: 32rem;
+}
+
+.doomstick-popup--open {
+  display: block;
+}
+
+/* ── Toast (first-run "3 servers seeded" notification) ───────────────── */
+@keyframes ds-toast-in {
+  from { opacity: 0; transform: translateY(0.5rem); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes ds-toast-out {
+  from { opacity: 1; }
+  to   { opacity: 0; }
+}
+
+.doomstick-toast {
+  position: fixed;
+  bottom: 1.25rem;
+  right: 1.25rem;
+  z-index: 9100;
+  padding: 0.6rem 1rem;
+  background: var(--color-shade-2, #f3f4f6);
+  border: 1px solid var(--color-shade-4, #e5e7eb);
+  border-radius: 0.375rem;
+  font-size: 0.8125rem;
+  line-height: 1.4;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.10);
+  animation: ds-toast-in 0.2s ease forwards;
+  pointer-events: none;
+}
+
+.doomstick-toast--dismissing {
+  animation: ds-toast-out 0.4s ease forwards;
+}

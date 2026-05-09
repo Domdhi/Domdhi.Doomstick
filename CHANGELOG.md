@@ -8,8 +8,25 @@ Format based on [Keep a Changelog](https://keepachangelog.com/).
 
 ## [Unreleased]
 
-### Queued for v0.8+
-- **EmbeddingGemma RAG layer** — `/rag/ingest` and `/rag/query` endpoints on redbean, backed by sqlite-vec. Uses EmbeddingGemma-300M (already shipped). Estimated effort: 3-5 days.
+*No queued items. v0.9 epic selection is open — candidates include offline image generation, an age-encrypted recovery vault, and a handheld hardware spin-off.*
+
+---
+
+## [0.8.1] — 2026-05-09
+
+*Follow-up patch closing a load-bearing cross-origin bug found during v0.8.0 verification, plus a doc/cosmetic punch list.*
+
+### Fixed
+
+- **Chat tab cross-origin fetch failure** — Hollama is served from `file://` and fetches redbean on `127.0.0.1:8768`. Browsers treat that as cross-origin AND require `Access-Control-Allow-Private-Network: true` (Chrome 117+) on top of standard CORS for any `file://` → `127.0.0.1` fetch. Without both, the chat-tab adapters silently failed: no `#filename` autocomplete results, no journal append, no chat session persistence. The fix calls the CORS helper **after** `SetStatus()` in every handler, never at top-level — top-level pre-calls survive on 200 responses and get re-applied by the handler helper, producing duplicate `Access-Control-Allow-Origin` headers that Chrome rejects per RFC 7230. Pattern now applied across 7 manual handlers, the `json` / `json_err` helpers, and the OPTIONS preflight handler. `Allow-Origin: *` is acceptable because redbean only binds `127.0.0.1`; remote origins cannot reach the listener.
+- **Journal append hollow heading** — `JournalAppendHandler` now skips the auto `## HH:MM` line when the user's request body already starts with its own markdown heading, preventing a hollow heading immediately followed by another. Behavior unchanged for plain-text bodies.
+
+### Documentation
+
+- **`docs/testing/windows-verification.md` path corrections** — chat tab verified at `USB\chat\` (build flattens `dashboard/*` to USB root, not `USB\dashboard\chat\`). Workspace README at `USB\workspace\README.md` (top-level, not per-default). T11 OCR threshold logic rewritten: `tesseract.min.js` is the ~10 KB v5 loader shim (no size threshold), `worker.min.js` is the >100 KB worker payload after the v5 split, traineddata threshold lowered from >5 MB to >3 MB to fit `tessdata_fast`'s ~4 MB `eng` pack. Removed rejected `--nobrowser` flag from the T8 llamafile invocation example (rejected as "unknown argument" by llamafile 0.10.1).
+- **Windows Defender APE false-positive note** — some Windows hosts quarantine `llamafile.exe` and `redbean.com.exe` under `Trojan:Win32/ClickFix.CCJ!MTB`, a known FP against Cosmopolitan polyglots. Added the unblock path (Windows Security → Protection history → Allow, or USB-letter exclusion) to both `dashboard/README.txt` and `README.md`. Both binaries are unmodified upstream releases (Mozilla-Ocho llamafile 0.10.1, redbean 3.0.0 from redbean.dev) with their own published checksums.
+- **Hollama first-boot onboarding** — clarified the Re-verify step in the `_extras-providers.js` toast and `dashboard/README.txt`: after provider seeding, the model picker stays empty until the user opens Settings and clicks Re-verify on each enabled server (Hollama keeps `isVerified: null` until user-initiated). Auto-firing the internal verify path is too coupled to Hollama bundle internals to do safely from an adapter; documenting the one-click step is the right answer until Hollama exposes a hook.
+- **README v0.8.0 manifest sync** — banner bumped to `v0.8.0 / 2026-05-09`; codename changed from `"phone home"` to `"the wedge"`; DECLASSIFIED date updated. §02 manifest now includes `redbean/`, `presets/`, `doom/`, `dashboard/chat/`, `start-embed.*`, `chat/`, `workspace/`. §04 EMBEDGEMMA row marked `🟢 FIELD READY` (no longer pending) with the v0.8 RAG role. §09 demotes EmbeddingGemma RAG out of "Still pending" (it shipped) and adds a unified ✅ row covering RAG + chat tab + journal + workspace primitive.
 
 ---
 

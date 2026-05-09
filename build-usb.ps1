@@ -563,9 +563,17 @@ $OcrLibDir     = Join-Path $Target 'ocr\lib'
 $OcrLangDir    = Join-Path $Target 'ocr\lang-data'
 $DocsDir       = Join-Path $Target 'docs-offline'
 $DoomDir       = Join-Path $Target 'doom'
+$ChatDir       = Join-Path $Target 'chat'
+$RedbeanLuaDir = Join-Path $RedbeanDir 'lua'
+$WorkspaceDir  = Join-Path $Target 'workspace\default'
+$WsDocsDir     = Join-Path $WorkspaceDir 'docs'
+$WsJournalDir  = Join-Path $WorkspaceDir 'journal'
+$WsInboxDir    = Join-Path $WorkspaceDir '_inbox'
 foreach ($d in @($RuntimeDir, $ModelsDir, $WhisperDir, $KiwixWinDir, $KiwixLinDir, $KiwixMacDir,
-                 $RedbeanDir, $SherpaLinDir, $SherpaMacDir, $SherpaWinDir, $SherpaModDir,
-                 $ZimDir, $MapsDir, $OcrLibDir, $OcrLangDir, $DocsDir, $DoomDir)) {
+                 $RedbeanDir, $RedbeanLuaDir,
+                 $SherpaLinDir, $SherpaMacDir, $SherpaWinDir, $SherpaModDir,
+                 $ZimDir, $MapsDir, $OcrLibDir, $OcrLangDir, $DocsDir, $DoomDir,
+                 $ChatDir, $WorkspaceDir, $WsDocsDir, $WsJournalDir, $WsInboxDir)) {
     New-Item -ItemType Directory -Force -Path $d | Out-Null
 }
 
@@ -713,8 +721,11 @@ if ($DoomIncludeOsm -eq 1 -and $DoomPbfUrl) {
 # AFTER DOOM staging in a single combined step below.
 if ($DoomIncludeRedbean -eq 1) {
     Get-File -Url $RedbeanUrl -Dest (Join-Path $RedbeanDir $RedbeanFile) -Expected $RedbeanBytes -Label 'redbean 3.0.0 (~5.5 MB)'
-    Copy-Item -LiteralPath (Join-Path $Repo 'redbean\.init.lua')  -Destination (Join-Path $RedbeanDir '.init.lua')  -Force
-    Copy-Item -LiteralPath (Join-Path $Repo 'redbean\README.txt') -Destination (Join-Path $RedbeanDir 'README.txt') -Force
+    Copy-Item -LiteralPath (Join-Path $Repo 'redbean\.init.lua')          -Destination (Join-Path $RedbeanDir '.init.lua')          -Force
+    Copy-Item -LiteralPath (Join-Path $Repo 'redbean\README.txt')         -Destination (Join-Path $RedbeanDir 'README.txt')         -Force
+    # v0.8 RAG: pure-Lua cosine module — baked into redbean.com at .lua/rag-cosine.lua
+    # so require("rag-cosine") in .init.lua resolves from the zip's package.path.
+    Copy-Item -LiteralPath (Join-Path $Repo 'redbean\lua\rag-cosine.lua') -Destination (Join-Path $RedbeanLuaDir 'rag-cosine.lua') -Force
 }
 
 # DOOM — Dwasm port (vendored under doom/ in repo) + shareware DOOM1.WAD (fetched)
@@ -854,7 +865,8 @@ function Invoke-PolyglotZipBake {
 if ($DoomIncludeRedbean -eq 1) {
     $rbBin = Join-Path $RedbeanDir $RedbeanFile
     $entries = @(
-        @{ Src = (Join-Path $RedbeanDir '.init.lua'); Path = '.init.lua' }
+        @{ Src = (Join-Path $RedbeanDir '.init.lua');                Path = '.init.lua' }
+        @{ Src = (Join-Path $RedbeanLuaDir 'rag-cosine.lua');        Path = '.lua/rag-cosine.lua' }
     )
     if ($DoomIncludeDoom -eq 1) {
         foreach ($f in @('index.html', 'index.js', 'index.data', 'index.wasm', $DoomWadFile, 'LICENSE-GPL-2.0', 'NOTICE.md')) {
@@ -979,7 +991,7 @@ Copy-Item -LiteralPath (Join-Path $Repo 'launchers\start.bat')     -Destination 
 Copy-Item -LiteralPath (Join-Path $Repo 'launchers\start.command') -Destination (Join-Path $Target 'start.command') -Force
 Copy-Item -LiteralPath (Join-Path $Repo 'launchers\start.sh')      -Destination (Join-Path $Target 'start.sh')      -Force
 
-foreach ($tool in @('whisper', 'wiki', 'ocr', 'docs', 'doom')) {
+foreach ($tool in @('whisper', 'wiki', 'ocr', 'docs', 'doom', 'embed')) {
     foreach ($ext in @('bat', 'command', 'sh')) {
         Copy-Item -LiteralPath (Join-Path $Repo "launchers\start-$tool.$ext") `
                   -Destination (Join-Path $Target "start-$tool.$ext") -Force
@@ -989,11 +1001,23 @@ foreach ($tool in @('whisper', 'wiki', 'ocr', 'docs', 'doom')) {
 Copy-Item -LiteralPath (Join-Path $Repo 'ocr\index.html')          -Destination (Join-Path $Target 'ocr\index.html')          -Force
 Copy-Item -LiteralPath (Join-Path $Repo 'ocr\README.txt')          -Destination (Join-Path $Target 'ocr\README.txt')          -Force
 Copy-Item -LiteralPath (Join-Path $Repo 'maps\README.md')          -Destination (Join-Path $Target 'maps\README.md')          -Force
-Copy-Item -LiteralPath (Join-Path $Repo 'docs-offline\README.txt') -Destination (Join-Path $Target 'docs-offline\README.txt') -Force
+$docsOfflineSrc = Join-Path $Repo 'docs-offline\README.txt'
+if (Test-Path -LiteralPath $docsOfflineSrc) {
+    Copy-Item -LiteralPath $docsOfflineSrc -Destination (Join-Path $Target 'docs-offline\README.txt') -Force
+} else {
+    Write-Host "  [skip] docs-offline\README.txt not in source tree (stale clone?); skipping"
+}
 
 Copy-Item -LiteralPath (Join-Path $Repo 'dashboard\index.html')    -Destination (Join-Path $Target 'index.html')              -Force
 Copy-Item -LiteralPath (Join-Path $Repo 'dashboard\mobile.html')   -Destination (Join-Path $Target 'mobile.html')             -Force
 Copy-Item -LiteralPath (Join-Path $Repo 'dashboard\README.txt')    -Destination (Join-Path $Target 'README.txt')              -Force
+
+# v0.8: vendored Hollama chat tab + workspace skeleton + workspace README
+# -Path (not -LiteralPath) so the trailing `*` expands as a glob — matches the
+# bash side's `cp -r .../chat/. .../chat/`. -LiteralPath treats `*` literally
+# and Copy-Item then errors with "Cannot find path …\chat\*" on a fresh build.
+Copy-Item -Path (Join-Path $Repo 'dashboard\chat\*') -Destination $ChatDir -Recurse -Force
+Copy-Item -LiteralPath (Join-Path $Repo 'workspace\README.md') -Destination (Join-Path $Target 'workspace\README.md') -Force
 
 Write-Host ''
 Write-Host '------------------------------------------------------------'

@@ -82,8 +82,14 @@ while ! curl -sf -m 2 "http://127.0.0.1:$PORT/" >/dev/null 2>&1; do
   fi
 done
 
-echo "  Server up. Opening browser at http://127.0.0.1:$PORT ..."
-xdg-open "http://127.0.0.1:$PORT" 2>/dev/null || open "http://127.0.0.1:$PORT" 2>/dev/null || true
+CHAT_PATH="$ROOT/chat/index.html"
+if [ -f "$CHAT_PATH" ]; then
+  echo "  Server up. Opening chat tab from $CHAT_PATH ..."
+  xdg-open "$CHAT_PATH" 2>/dev/null || open "$CHAT_PATH" 2>/dev/null || true
+else
+  echo "  Server up. Chat tab missing — opening bare llamafile UI at http://127.0.0.1:$PORT ..."
+  xdg-open "http://127.0.0.1:$PORT" 2>/dev/null || open "http://127.0.0.1:$PORT" 2>/dev/null || true
+fi
 
 echo
 echo "  =============================================="

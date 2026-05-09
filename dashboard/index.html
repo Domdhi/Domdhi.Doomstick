@@ -1076,6 +1076,14 @@ body.mobile-mode .terminal-action { padding: 14px 22px; }
       <button class="terminal-action" type="button" data-copy-path="start.sh">Copy Path</button>
     </article>
 
+    <article class="terminal">
+      <span class="terminal-tag">▸ NODE-CHAT</span>
+      <h3 class="terminal-name">Chat Tab</h3>
+      <p class="terminal-desc">Vendored Hollama frontend at <code>chat/index.html</code>. Multi-session, multi-server, markdown + KaTeX. Boots automatically when the OS launcher runs; can also be opened directly once the AI core is up.</p>
+      <p class="path-hint">on USB: <code>chat/index.html</code></p>
+      <a class="terminal-action solo" href="chat/index.html">Open Chat</a>
+    </article>
+
   </div>
 </section>
 
@@ -1218,7 +1226,7 @@ body.mobile-mode .terminal-action { padding: 14px 22px; }
 
 <section class="desktop-only">
   <h2 class="section-title"><span class="num">§04</span>Side Arms</h2>
-  <p class="section-lede">The kit is more than just the AI core. Five auxiliary tools ship alongside, each with its own launcher and its own port. Run them in parallel — chat, transcribe, look something up on offline Wikipedia, OCR a photo, all from the same stick.</p>
+  <p class="section-lede">The kit is more than just the AI core. Six auxiliary tools ship alongside, each with its own launcher and its own port. Run them in parallel — chat, transcribe, look something up on offline Wikipedia, OCR a photo, embed your docs for RAG, all from the same stick.</p>
 
   <div class="grid grid-3 stagger">
 
@@ -1268,6 +1276,14 @@ body.mobile-mode .terminal-action { padding: 14px 22px; }
       <p class="terminal-desc">Text → audio via Sherpa-ONNX + Supertonic int8. Rides on redbean's <code>/tts</code> route — POST plain text, get <code>audio/wav</code> back. Native C++, no Python. Shares port <code>8768</code> with DOOM saves.</p>
       <code class="terminal-cmd">curl -X POST :8768/tts -d 'hello' -o out.wav</code>
       <button class="terminal-action" type="button" data-copy-path="ai-kit/sherpa-tts/">Copy Path</button>
+    </article>
+
+    <article class="terminal">
+      <span class="terminal-tag">▸ AUX·EMBED</span>
+      <h3 class="terminal-name">Embedder</h3>
+      <p class="terminal-desc">Boot EmbeddingGemma 300M Q8 on port <code>8769</code> for RAG. Drop docs into <code>workspace/&lt;name&gt;/docs/</code>, ask questions in chat with <code>#filename</code>. Opt-in — chat works without it. ~530 MB extra RAM. v0.8+.</p>
+      <code class="terminal-cmd" data-cmd-for="start-embed.bat">start-embed.bat</code>
+      <button class="terminal-action" type="button" data-copy-path="start-embed.bat">Copy Path</button>
     </article>
 
   </div>

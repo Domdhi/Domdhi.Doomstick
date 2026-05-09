@@ -30,6 +30,10 @@ USB root
 +-- start-docs.{bat,command,sh}      DevDocs (programming reference; manual setup)
 +-- README.txt                       This file
 |
++-- start-embed.{bat,command,sh}     Embedding side-arm (port 8769; for RAG)
++-- chat\                            Hollama chat tab (file://, AI + RAG + journal)
++-- workspace\                       Per-workspace docs/ + journal/ folders (RAG corpus)
+|
 +-- ai-kit\                          AI runtime + models + side-arm binaries
 |   +-- runtime\
 |   |   +-- llamafile               43 MB inference engine (Linux/macOS)
@@ -44,7 +48,7 @@ USB root
 |   |   +-- linux\, mac\, win\                    kiwix-serve binaries per OS
 |   +-- redbean\
 |   |   +-- redbean.com                            Local platform layer (port 8768)
-|   |   +-- saves.db                               DOOM save slots (created on first save)
+|   |   +-- saves.db                               DOOM saves + chat sessions + RAG chunks
 |   +-- sherpa-tts\
 |   |   +-- linux\, mac\, win\                     sherpa-onnx-offline-tts per OS
 |   |   +-- models\supertonic\                     Supertonic int8 ONNX (~120 MB)
@@ -98,6 +102,50 @@ weights.
 
 
 -------------------------------------------------------------------------
+WINDOWS DEFENDER FALSE-POSITIVE ON FIRST RUN
+-------------------------------------------------------------------------
+
+Some Windows hosts will quarantine llamafile.exe and/or redbean.com.exe
+on first launch with a generic verdict (e.g. "Trojan:Win32/ClickFix.CCJ!MTB").
+This is a known false-positive against Cosmopolitan APE polyglot binaries
+- the same single file boots on Windows, Linux, and macOS, which trips
+heuristic detection that's tuned for normal single-OS PE32 executables.
+
+The binaries are unmodified upstream releases:
+  - llamafile.exe = Mozilla-Ocho llamafile 0.10.1 (Apache 2.0)
+  - redbean.com.exe = redbean 3.0.0 from redbean.dev (ISC)
+
+Both are published with their own SHA-256 checksums on their respective
+release pages; you can verify either before allowing.
+
+To proceed: open Windows Security -> Protection history -> Allow on the
+quarantined item, OR add the USB drive letter to Defender exclusions
+(Settings -> Virus & threat protection -> Manage settings -> Exclusions).
+
+We've reported the false-positive to Microsoft. Once their MAPS
+classifier picks up the cleaner sample, the warning will stop appearing.
+
+
+-------------------------------------------------------------------------
+FIRST-RUN CHAT TAB ONBOARDING (v0.8+)
+-------------------------------------------------------------------------
+
+The chat tab at chat/index.html is a vendored Hollama 0.35.4 frontend
+seeded with three local servers (E4B at :8765, 26B at :8765, embeddings
+at :8769). On first boot a toast confirms the seed.
+
+For the model picker to populate, open Settings (the gear icon in the
+sidebar) and click "Re-verify" next to each server you want to use.
+That kicks Hollama's connection check, which lists the local model
+behind that endpoint. The Send button stays disabled until at least one
+verified server has a selected model.
+
+You only do this once per browser profile per USB. The seed and verify
+state both live in localStorage, so re-opening the tab on the same host
+remembers everything. A different host or a private window starts fresh.
+
+
+-------------------------------------------------------------------------
 SIDE ARMS (shipped with the kit)
 -------------------------------------------------------------------------
 
@@ -128,6 +176,24 @@ SIDE ARMS (shipped with the kit)
                                     Plain-text body in, audio/wav out.
                                     Native C++ binaries per OS, no
                                     Python on host.
+
+  start-embed.{bat,command,sh}      Embedding side-arm for RAG. Boots
+                                    EmbeddingGemma-300M Q8 on port 8769.
+                                    Required when using the chat tab's
+                                    document-aware features (#filename
+                                    autocomplete, journal, /rag/query).
+
+  chat\index.html                   Vendored Hollama 0.35.4 chat UI with
+                                    workspace/RAG/journal/session adapters.
+                                    Open as a file:// in any modern
+                                    browser. Talks to redbean on :8768
+                                    for persistence and to the AI cores.
+
+  workspace\<name>\docs\            Per-workspace document corpus for RAG.
+                                    Drop .md/.txt/.pdf-extracted text in;
+                                    use the chat tab's #filename
+                                    autocomplete or POST /rag/ingest to
+                                    add chunks to the index.
 
 
 -------------------------------------------------------------------------

@@ -668,7 +668,12 @@ mkdir -p \
   "$TARGET/ocr/lib" \
   "$TARGET/ocr/lang-data" \
   "$TARGET/docs-offline" \
-  "$TARGET/doom"
+  "$TARGET/doom" \
+  "$TARGET/chat" \
+  "$TARGET/workspace/default/docs" \
+  "$TARGET/workspace/default/journal" \
+  "$TARGET/workspace/default/_inbox" \
+  "$TARGET/ai-kit/redbean/lua"
 
 # ---------------------------------------------------------------- helpers (build phase)
 
@@ -835,8 +840,11 @@ fi
 if [ "${DOOM_INCLUDE_REDBEAN:-0}" = "1" ]; then
   fetch "$REDBEAN_URL" "$TARGET/ai-kit/redbean/$REDBEAN_FILE" "$REDBEAN_BYTES" "redbean 3.0.0 (~5.5 MB)"
   chmod +x "$TARGET/ai-kit/redbean/$REDBEAN_FILE"
-  cp "$REPO/redbean/.init.lua"  "$TARGET/ai-kit/redbean/.init.lua"
-  cp "$REPO/redbean/README.txt" "$TARGET/ai-kit/redbean/README.txt"
+  cp "$REPO/redbean/.init.lua"           "$TARGET/ai-kit/redbean/.init.lua"
+  cp "$REPO/redbean/README.txt"          "$TARGET/ai-kit/redbean/README.txt"
+  # v0.8 RAG: pure-Lua cosine module — baked into redbean.com's appended zip
+  # at .lua/rag-cosine.lua so `require("rag-cosine")` in .init.lua resolves.
+  cp "$REPO/redbean/lua/rag-cosine.lua"  "$TARGET/ai-kit/redbean/lua/rag-cosine.lua"
 fi
 
 # DOOM — Dwasm port (vendored under doom/ in repo) + shareware DOOM1.WAD (fetched)
@@ -875,7 +883,12 @@ if [ "${DOOM_INCLUDE_REDBEAN:-0}" = "1" ] && command -v zip >/dev/null 2>&1; the
   cp "$TARGET/ai-kit/redbean/$REDBEAN_FILE" "$BAKE_TMP/$REDBEAN_FILE"
   cp "$TARGET/ai-kit/redbean/.init.lua"     "$BAKE_TMP/.init.lua"
 
-  BAKE_ENTRIES=".init.lua"
+  # v0.8 RAG: stage rag-cosine.lua at .lua/rag-cosine.lua so redbean's
+  # require("rag-cosine") finds it in the zip's package.path.
+  mkdir -p "$BAKE_TMP/.lua"
+  cp "$TARGET/ai-kit/redbean/lua/rag-cosine.lua" "$BAKE_TMP/.lua/rag-cosine.lua"
+
+  BAKE_ENTRIES=".init.lua .lua/rag-cosine.lua"
   if [ "${DOOM_INCLUDE_DOOM:-0}" = "1" ]; then
     mkdir -p "$BAKE_TMP/doom"
     cp "$TARGET/doom/index.html"      "$BAKE_TMP/doom/"
@@ -992,7 +1005,7 @@ cp "$REPO/launchers/start.sh"      "$TARGET/start.sh"
 
 # Side-arm launchers — copied unconditionally so the USB layout is consistent;
 # launchers themselves print a clear error if the underlying data isn't present.
-for tool in whisper wiki ocr docs doom; do
+for tool in whisper wiki ocr docs doom embed; do
   cp "$REPO/launchers/start-$tool.bat"     "$TARGET/start-$tool.bat"
   cp "$REPO/launchers/start-$tool.command" "$TARGET/start-$tool.command"
   cp "$REPO/launchers/start-$tool.sh"      "$TARGET/start-$tool.sh"
@@ -1009,6 +1022,10 @@ cp -r "$REPO/docs-offline/README.txt" "$TARGET/docs-offline/README.txt"
 cp "$REPO/dashboard/index.html"  "$TARGET/index.html"
 cp "$REPO/dashboard/mobile.html" "$TARGET/mobile.html"
 cp "$REPO/dashboard/README.txt"  "$TARGET/README.txt"
+
+# v0.8: vendored Hollama chat tab + workspace skeleton + workspace README
+cp -r "$REPO/dashboard/chat/." "$TARGET/chat/"
+cp    "$REPO/workspace/README.md" "$TARGET/workspace/README.md"
 
 echo
 echo "------------------------------------------------------------"

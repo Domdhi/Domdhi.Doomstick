@@ -85,8 +85,13 @@ if errorlevel 1 (
   goto wait
 )
 
-echo  Server up. Opening browser at http://127.0.0.1:%PORT% ...
-start "" http://127.0.0.1:%PORT%
+if exist "%ROOT%chat\index.html" (
+  echo  Server up. Opening chat tab from %ROOT%chat\index.html ...
+  start "" "%ROOT%chat\index.html"
+) else (
+  echo  Server up. Chat tab missing -- opening bare llamafile UI at http://127.0.0.1:%PORT% ...
+  start "" http://127.0.0.1:%PORT%
+)
 
 echo.
 echo  ==============================================
