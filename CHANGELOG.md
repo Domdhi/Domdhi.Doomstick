@@ -13,6 +13,63 @@ Format based on [Keep a Changelog](https://keepachangelog.com/).
 
 ---
 
+## [0.8.0] — 2026-05-09
+
+### Added
+
+- **RAG layer over redbean** — new endpoints `/rag/_loadtest`,
+  `/rag/ingest`, `/rag/query`, `/rag/list-docs`, `/rag/list-workspaces`
+  on port 8768. Pure-Lua cosine over `embedding BLOB` columns; ~500 ms
+  round-trip on 1000-chunk corpus.
+- **Embedding side-arm** — `start-embed.{bat,sh,command}` runs llamafile
+  `--embedding` on port 8769 with EmbeddingGemma-300M Q8 (already shipped
+  since v0.3, no extra fetch).
+- **Vendored Hollama 0.35.4 chat tab** at `dashboard/chat/` (MIT-licensed,
+  served via `file://`). 5 adapter files inject `#filename` autocomplete,
+  workspace dropdown, server-backed session persistence, 3-server provider
+  seed (E4B + 26B + embed), and journal sidebar.
+- **Chat persistence on the USB** — `/chat/save`, `/chat/list`, `/chat/load`
+  redbean handlers (UPSERT on UUID). Sessions survive host changes.
+- **Daily journal** — `/journal/append` and `/journal/today` write to
+  `workspace/<name>/journal/YYYY-MM-DD.md` and auto-ingest into RAG.
+- **Workspace primitive** — folder convention at `workspace/<name>/docs/`.
+  Per-workspace scoping at every RAG and chat endpoint.
+- **New launcher** — `start.{bat,command,sh}` opens chat tab.
+
+### Changed
+
+- **Architecture pivot at Wave 0 D4** — sqlite-vec dropped in favor of
+  pure-Lua cosine over `embedding BLOB` columns, because redbean's
+  lsqlite3 has no FTS5 and no `load_extension`. Saves cross-OS binary
+  procurement; trades vec0 query speed for in-Lua full-scan top-K
+  (acceptable at v0.8 corpus sizes).
+- **Dashboard `§02 Initiation Devices`** gains a 4th card — chat tab.
+
+### Fixed
+
+- **`SaveHandler` BLOB truncation** (latent since v0.6) — `lsqlite3`
+  `bind_values()` infers Lua-string → TEXT, which truncates binary
+  data containing null bytes or invalid UTF-8. DOOM saves with real
+  binary content would have corrupted; just hadn't been smoked. Both
+  RAG ingestion and DOOM saves now use explicit `stmt:bind_blob(idx, str)`.
+
+### Documentation
+
+- New gotchas in `CLAUDE.md` covering: lsqlite3 no-FTS5/no-load_extension,
+  redbean Fetch() multivalue signature, lsqlite3 bind_values BLOB
+  truncation, WSL2 silently dropping outbound TCP to unbound localhost,
+  EmbeddingGemma EMBED_DIM=768 pin, Hollama vendor adapter pattern,
+  SvelteKit absolute-path sed post-process, `.lua/` require path in
+  zip-bake, and redbean handler dispatch ordering.
+- New verification tests in `docs/testing/windows-verification.md`:
+  T13 (RAG round-trip), PRE.D (RAG pre-suite guard), UX5 (chat tab
+  on phone).
+- Hollama vendor pin documented at `dashboard/chat/PINNED.md` with
+  full DOM contract table.
+- Architectural design doc at `docs/research/rag-architecture-2026-05-09.md`.
+
+---
+
 ## [v0.7.3] — 2026-05-08
 
 *Build-script fixes surfaced by Windows end-to-end verification. Kit behavior unchanged when freshly built; this release prevents future builds from regressing the Windows path.*
