@@ -41,8 +41,9 @@ Examples:
 
 Defaults / 'full' bundle download size:
   AI core    ~22.3 GB   (43 MB runtime + 5 GB E4B + 17 GB 26B + 329 MB embed)
-  Side arms  ~ 560 MB   (whisperfile + kiwix + simple-en zim + tesseract + monaco pbf)
-  Total      ~22.9 GB
+  Side arms  ~ 910 MB   (whisperfile small.en + kiwix + simple-en zim + tesseract + monaco pbf)
+  TTS        ~ 210 MB   (sherpa-onnx per-OS + Supertonic int8 model)
+  Total      ~23.3 GB
 
 Re-runs skip files already present with the right size.
 EOF
@@ -84,9 +85,9 @@ apply_baked_defaults() {
   DOOM_INCLUDE_EMB=1
 
   DOOM_INCLUDE_WIKI=1
-  DOOM_ZIM_URL="https://download.kiwix.org/zim/wikipedia/wikipedia_en_simple_all_nopic_2024-06.zim"
-  DOOM_ZIM_FILE="wikipedia_en_simple_all_nopic_2024-06.zim"
-  DOOM_ZIM_BYTES=395000000
+  DOOM_ZIM_URL="https://download.kiwix.org/zim/wikipedia/wikipedia_en_simple_all_nopic_2026-02.zim"
+  DOOM_ZIM_FILE="wikipedia_en_simple_all_nopic_2026-02.zim"
+  DOOM_ZIM_BYTES=966064955
   DOOM_ZIM_LABEL="Simple English"
 
   DOOM_INCLUDE_OSM=1
@@ -95,10 +96,10 @@ apply_baked_defaults() {
   DOOM_PBF_BYTES=700000
 
   DOOM_INCLUDE_WHISPER=1
-  DOOM_WHISPER_URL="https://huggingface.co/Mozilla/whisperfile/resolve/main/whisper-base.en.llamafile?download=true"
-  DOOM_WHISPER_FILE="whisper-base.en.llamafile"
-  DOOM_WHISPER_BYTES=148000000
-  DOOM_WHISPER_LABEL="base.en"
+  DOOM_WHISPER_URL="https://huggingface.co/Mozilla/whisperfile/resolve/main/whisper-small.en.llamafile?download=true"
+  DOOM_WHISPER_FILE="whisper-small.en.llamafile"
+  DOOM_WHISPER_BYTES=497053916
+  DOOM_WHISPER_LABEL="small.en"
 
   DOOM_INCLUDE_OCR=1
   DOOM_OCR_LANGS="eng"
@@ -707,17 +708,25 @@ DOOM_WAD_FILE="doom1.wad"
 DOOM_WAD_BYTES=4196020
 
 # Sherpa-ONNX TTS runtime — native C++ binary, per-OS (no APE polyglot).
-# Linux/macOS ship as multi-file tar.bz2 (binary + .so/.dylib next to it);
-# Windows ships as a single standalone .exe. Pin to v1.13.1 (released
-# 2026-05-08) — Supertonic supported since v1.12.29. Update version, sizes,
-# and any new platform binaries here when bumping.
+# All three OSes ship as multi-file tar.bz2 (binary + onnxruntime DLLs/SOs
+# next to it). Pin to v1.13.1 (released 2026-05-08) — Supertonic supported
+# since v1.12.29. Update version, sizes, and any new platform binaries here
+# when bumping.
+#
+# Windows: pick the MT-Release variant. "MT" = static CRT, so the kit runs
+# on hosts without the Visual C++ Redistributable installed (essential for
+# "plug into a stranger's machine"). MD-Release is 4 MB smaller but silently
+# breaks on hosts missing the redist. The release also offers a standalone
+# `sherpa-onnx-non-streaming-tts-x64-<ver>.exe` — DO NOT USE: that's the GUI
+# app ("Text-to-Speech with Next-gen Kaldi"), not the CLI we need. See the
+# CLAUDE.md "Windows sherpa-onnx" gotcha.
 SHERPA_VERSION="v1.13.1"
 SHERPA_LINUX_URL="https://github.com/k2-fsa/sherpa-onnx/releases/download/${SHERPA_VERSION}/sherpa-onnx-${SHERPA_VERSION}-linux-x64-shared.tar.bz2"
 SHERPA_LINUX_BYTES=30000000
 SHERPA_MAC_URL="https://github.com/k2-fsa/sherpa-onnx/releases/download/${SHERPA_VERSION}/sherpa-onnx-${SHERPA_VERSION}-osx-arm64-shared.tar.bz2"
 SHERPA_MAC_BYTES=30000000
-SHERPA_WIN_URL="https://github.com/k2-fsa/sherpa-onnx/releases/download/${SHERPA_VERSION}/sherpa-onnx-non-streaming-tts-x64-${SHERPA_VERSION}.exe"
-SHERPA_WIN_BYTES=20400000
+SHERPA_WIN_URL="https://github.com/k2-fsa/sherpa-onnx/releases/download/${SHERPA_VERSION}/sherpa-onnx-${SHERPA_VERSION}-win-x64-shared-MT-Release.tar.bz2"
+SHERPA_WIN_BYTES=23278074
 
 # Supertonic int8 model — int8-quantized ONNX bundle for Sherpa-ONNX TTS.
 # Single archive containing duration_predictor.int8.onnx, text_encoder.int8.onnx,
@@ -821,26 +830,13 @@ if [ "${DOOM_INCLUDE_OSM:-0}" = "1" ] && [ -n "${DOOM_PBF_URL:-}" ]; then
 fi
 
 # redbean — local platform layer (port 8768)
+# Fetch + stage; the zip-bake (.init.lua + doom/* if included) happens
+# AFTER DOOM staging in a single combined step below.
 if [ "${DOOM_INCLUDE_REDBEAN:-0}" = "1" ]; then
   fetch "$REDBEAN_URL" "$TARGET/ai-kit/redbean/$REDBEAN_FILE" "$REDBEAN_BYTES" "redbean 3.0.0 (~5.5 MB)"
   chmod +x "$TARGET/ai-kit/redbean/$REDBEAN_FILE"
   cp "$REPO/redbean/.init.lua"  "$TARGET/ai-kit/redbean/.init.lua"
   cp "$REPO/redbean/README.txt" "$TARGET/ai-kit/redbean/README.txt"
-
-  # Bake .init.lua into the redbean.com polyglot's appended zip. redbean
-  # reads .init.lua from its asset zip — `-D <docroot>` overlays static
-  # files but does NOT expose .init.lua as an asset, and the `-A` flag is
-  # broken in 3.0.0 (StoreAsset regression on Arm64 work). zip-appending is
-  # the documented approach and what `--assimilate` does internally.
-  # Doing this on the *target* binary, not the repo source, so the canonical
-  # fetched binary stays untouched.
-  if command -v zip >/dev/null 2>&1; then
-    ( cd "$TARGET/ai-kit/redbean" && zip -q "$REDBEAN_FILE" .init.lua )
-    echo "  baked .init.lua into $TARGET/ai-kit/redbean/$REDBEAN_FILE"
-  else
-    echo "  WARNING: 'zip' not found — redbean will not load .init.lua at runtime."
-    echo "           Install zip (apt: zip / brew: zip / mac: ships in xcode-select) and re-run."
-  fi
 fi
 
 # DOOM — Dwasm port (vendored under doom/ in repo) + shareware DOOM1.WAD (fetched)
@@ -852,6 +848,63 @@ if [ "${DOOM_INCLUDE_DOOM:-0}" = "1" ]; then
   cp "$REPO/doom/index.wasm"        "$TARGET/doom/index.wasm"
   cp "$REPO/doom/LICENSE-GPL-2.0"   "$TARGET/doom/LICENSE-GPL-2.0"
   cp "$REPO/doom/NOTICE.md"         "$TARGET/doom/NOTICE.md"
+fi
+
+# Bake .init.lua (+ doom/* when shipped) into redbean.com's appended zip.
+#
+# Why baked into the zip and not just `-D <docroot>`:
+#   - redbean reads .init.lua from its asset zip; -D overlays static files
+#     but does NOT expose .init.lua as an asset, and the `-A` runtime-add
+#     flag is broken in 3.0.0 (StoreAsset regression).
+#   - When the USB is exFAT (typical) and accessed from native Windows,
+#     Cosmopolitan's stat() reports directories as mode 040700, which fails
+#     redbean's static-serve "other readable" check → 403 on /doom/. Files
+#     served from the appended zip skip that filesystem check entirely.
+#
+# Why bake on a /tmp ext4 dir and cp back instead of zipping in place:
+#   - zip's atomic-rename (temp ziXXXXXX → original) fails on WSL DrvFs
+#     mounts of exFAT, leaving the original gone and an orphan temp file.
+#     Plain cp from /tmp → target works fine; no atomic rename involved.
+#
+# Doing the bake on the *target* binary so the canonical repo source stays
+# untouched. Idempotent: zip updates existing entries on re-bake.
+if [ "${DOOM_INCLUDE_REDBEAN:-0}" = "1" ] && command -v zip >/dev/null 2>&1; then
+  rm -f "$TARGET/ai-kit/redbean/"zi?????? 2>/dev/null || true   # sweep prior-run orphans
+
+  BAKE_TMP="$(mktemp -d)"
+  cp "$TARGET/ai-kit/redbean/$REDBEAN_FILE" "$BAKE_TMP/$REDBEAN_FILE"
+  cp "$TARGET/ai-kit/redbean/.init.lua"     "$BAKE_TMP/.init.lua"
+
+  BAKE_ENTRIES=".init.lua"
+  if [ "${DOOM_INCLUDE_DOOM:-0}" = "1" ]; then
+    mkdir -p "$BAKE_TMP/doom"
+    cp "$TARGET/doom/index.html"      "$BAKE_TMP/doom/"
+    cp "$TARGET/doom/index.js"        "$BAKE_TMP/doom/"
+    cp "$TARGET/doom/index.data"      "$BAKE_TMP/doom/"
+    cp "$TARGET/doom/index.wasm"      "$BAKE_TMP/doom/"
+    cp "$TARGET/doom/$DOOM_WAD_FILE"  "$BAKE_TMP/doom/"
+    cp "$TARGET/doom/LICENSE-GPL-2.0" "$BAKE_TMP/doom/"
+    cp "$TARGET/doom/NOTICE.md"       "$BAKE_TMP/doom/"
+    BAKE_ENTRIES="$BAKE_ENTRIES doom/index.html doom/index.js doom/index.data doom/index.wasm doom/$DOOM_WAD_FILE doom/LICENSE-GPL-2.0 doom/NOTICE.md"
+  fi
+
+  ( cd "$BAKE_TMP" && zip -q "$REDBEAN_FILE" $BAKE_ENTRIES )
+  cp "$BAKE_TMP/$REDBEAN_FILE" "$TARGET/ai-kit/redbean/$REDBEAN_FILE"
+  # Keep redbean.com.exe in sync with redbean.com so Windows launches the
+  # freshly-baked binary, not a stale .exe from a prior deploy. (start-doom.bat
+  # only runs the .exe variant; its `if not exist` guard skips the copy when
+  # .exe already exists, so build-usb has to refresh it here.)
+  cp "$BAKE_TMP/$REDBEAN_FILE" "$TARGET/ai-kit/redbean/$REDBEAN_FILE.exe"
+  rm -rf "$BAKE_TMP"
+
+  if [ "${DOOM_INCLUDE_DOOM:-0}" = "1" ]; then
+    echo "  baked .init.lua + doom/ into $TARGET/ai-kit/redbean/$REDBEAN_FILE (+.exe synced)"
+  else
+    echo "  baked .init.lua into $TARGET/ai-kit/redbean/$REDBEAN_FILE (+.exe synced)"
+  fi
+elif [ "${DOOM_INCLUDE_REDBEAN:-0}" = "1" ]; then
+  echo "  WARNING: 'zip' not found — redbean will not load .init.lua at runtime."
+  echo "           Install zip (apt: zip / brew: zip / mac: ships in xcode-select) and re-run."
 fi
 
 # ---------------------------------------------------------------- TTS
@@ -893,9 +946,27 @@ if [ "${DOOM_INCLUDE_TTS:-0}" = "1" ]; then
     chmod +x "$TARGET/ai-kit/sherpa-tts/mac/sherpa-onnx-offline-tts" 2>/dev/null || true
   fi
 
-  # Windows runtime — single statically-built .exe. No extraction.
-  if [ ! -f "$TARGET/ai-kit/sherpa-tts/win/sherpa-onnx-offline-tts.exe" ]; then
-    fetch "$SHERPA_WIN_URL" "$TARGET/ai-kit/sherpa-tts/win/sherpa-onnx-offline-tts.exe" "$SHERPA_WIN_BYTES" "sherpa-onnx ${SHERPA_VERSION} win-x64 (single .exe)"
+  # Windows runtime — multi-file shared tarball, same shape as Linux/Mac.
+  # bin/sherpa-onnx-offline-tts.exe + bin/onnxruntime*.dll + lib/*.dll.
+  # Static CRT (MT-Release), so no Visual C++ Redistributable needed on host.
+  # Guard requires both the .exe AND onnxruntime.dll — earlier kits shipped
+  # the standalone GUI .exe under this same filename, and that variant lacks
+  # onnxruntime.dll, so this clause refetches the proper CLI archive over it.
+  if [ ! -f "$TARGET/ai-kit/sherpa-tts/win/sherpa-onnx-offline-tts.exe" ] || \
+     [ ! -f "$TARGET/ai-kit/sherpa-tts/win/onnxruntime.dll" ]; then
+    rm -f "$TARGET/ai-kit/sherpa-tts/win/sherpa-onnx-offline-tts.exe"
+    SHERPA_WIN_TBZ="$TARGET/ai-kit/sherpa-tts/win/sherpa-onnx.tar.bz2"
+    fetch "$SHERPA_WIN_URL" "$SHERPA_WIN_TBZ" "$SHERPA_WIN_BYTES" "sherpa-onnx ${SHERPA_VERSION} win-x64 (MT-Release)"
+    tar -xjf "$SHERPA_WIN_TBZ" -C "$TARGET/ai-kit/sherpa-tts/win" --strip-components=1
+    rm -f "$SHERPA_WIN_TBZ"
+    # Same flatten pattern as Linux/Mac — the .exe and its onnxruntime DLLs
+    # need to sit at the top of ai-kit/sherpa-tts/win/ for the .init.lua
+    # TtsHandler to find them and for Windows DLL search to resolve deps.
+    if [ -f "$TARGET/ai-kit/sherpa-tts/win/bin/sherpa-onnx-offline-tts.exe" ]; then
+      mv "$TARGET/ai-kit/sherpa-tts/win/bin/"* "$TARGET/ai-kit/sherpa-tts/win/" 2>/dev/null || true
+      mv "$TARGET/ai-kit/sherpa-tts/win/lib/"* "$TARGET/ai-kit/sherpa-tts/win/" 2>/dev/null || true
+      rmdir "$TARGET/ai-kit/sherpa-tts/win/bin" "$TARGET/ai-kit/sherpa-tts/win/lib" 2>/dev/null || true
+    fi
   fi
 
   # Supertonic int8 model — shared across all 3 OS binaries. Single tarball,
@@ -936,6 +1007,7 @@ cp -r "$REPO/maps/README.md"   "$TARGET/maps/README.md"
 cp -r "$REPO/docs-offline/README.txt" "$TARGET/docs-offline/README.txt"
 
 cp "$REPO/dashboard/index.html"  "$TARGET/index.html"
+cp "$REPO/dashboard/mobile.html" "$TARGET/mobile.html"
 cp "$REPO/dashboard/README.txt"  "$TARGET/README.txt"
 
 echo

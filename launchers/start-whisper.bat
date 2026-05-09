@@ -1,15 +1,23 @@
 @echo off
-REM Whisperfile launcher: runs whisper-base.en.llamafile in --gui mode.
-REM Lives at the USB root; references ai-kit\whisper\ alongside.
+REM Whisperfile launcher: runs whatever whisper-*.llamafile the build wizard
+REM staged into ai-kit\whisper\ (tiny.en / small.en / medium.en) as an HTTP
+REM server on :8766. Lives at the USB root; references ai-kit\whisper\ alongside.
 setlocal
 set "ROOT=%~dp0"
 set "PORT=8766"
-set "WHISPER=%ROOT%ai-kit\whisper\whisper-base.en.llamafile"
+set "WHISPER="
+set "WHISPER_NAME="
+for %%F in ("%ROOT%ai-kit\whisper\whisper-*.llamafile") do (
+  if not defined WHISPER (
+    set "WHISPER=%%~fF"
+    set "WHISPER_NAME=%%~nxF"
+  )
+)
 set "LOG=%ROOT%ai-kit\whisper.log"
 
-if not exist "%WHISPER%" (
+if not defined WHISPER (
   echo.
-  echo  ERROR: %WHISPER% not found.
+  echo  ERROR: no whisper-*.llamafile found in %ROOT%ai-kit\whisper\.
   echo         Run build-usb.ps1 against this stick first.
   pause
   exit /b 1
@@ -23,7 +31,7 @@ echo  ==============================================
 echo.
 
 REM Clean any orphan whisperfile from a previous run.
-taskkill /F /IM whisper-base.en.llamafile.exe >nul 2>&1
+taskkill /F /IM "%WHISPER_NAME%.exe" >nul 2>&1
 taskkill /F /IM whisperfile.exe >nul 2>&1
 
 REM Whisperfile registers as a .llamafile so it runs as an APE polyglot.
@@ -31,7 +39,7 @@ REM Windows refuses to launch a .llamafile by name, so call the shipped
 REM cosmocc loader by renaming a copy to .exe at first run.
 if not exist "%WHISPER%.exe" copy /Y "%WHISPER%" "%WHISPER%.exe" >nul
 
-start "Whisperfile" /MIN cmd /c ""%WHISPER%.exe" --host 127.0.0.1 --port %PORT% --gui > "%LOG%" 2>&1"
+start "Whisperfile" /MIN cmd /c ""%WHISPER%.exe" --host 127.0.0.1 --port %PORT% > "%LOG%" 2>&1"
 
 echo  Loading Whisperfile (~5 seconds)...
 echo  Log: %LOG%
@@ -61,7 +69,7 @@ echo  ==============================================
 echo.
 pause >nul
 
-taskkill /F /IM whisper-base.en.llamafile.exe >nul 2>&1
+taskkill /F /IM "%WHISPER_NAME%.exe" >nul 2>&1
 taskkill /F /IM whisperfile.exe >nul 2>&1
 endlocal
 exit /b 0

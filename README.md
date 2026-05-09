@@ -57,7 +57,7 @@ assembles the full USB layout for you. You supply the USB and the bandwidth
 
   ☢  EMERGENCY BROADCAST · OFFLINE EMERGENCY ASSISTANCE NETWORK  ☣
 
-      CLASSIFICATION  ▸  PUBLIC               DOOMSTICK · v0.7 · 2026·05·08
+      CLASSIFICATION  ▸  PUBLIC               DOOMSTICK · v0.7.2 · 2026·05·08
       TRANSMISSION    ▸  OFFLINE              COSMOPOLITAN · CPU-ONLY · USB
       AUTH            ▸  Apache-2.0 + GPL     ENDPOINT · 127.0.0.1 : 8765
 
@@ -137,7 +137,7 @@ This is a recipe — large binary artifacts (model weights, ISOs) live upstream 
 │   │   ├── gemma-4-26B-A4B-it-UD-Q4_K_M.gguf    17 GB, big brain MoE
 │   │   └── embeddinggemma-300m-qat-Q8_0.gguf    329 MB, for RAG (no chat UI yet)
 │   ├── whisper/
-│   │   └── whisper-base.en.llamafile             148 MB, audio → text
+│   │   └── whisper-small.en.llamafile           497 MB, audio → text
 │   ├── kiwix/
 │   │   ├── linux/, mac/, win/                    kiwix-serve binaries (~6 MB each)
 │   ├── redbean/
@@ -221,6 +221,33 @@ That's the whole UX.
 
 > [!IMPORTANT]
 > **Only one model runs at a time.** The launcher kills any orphan llamafile process on each start, so you can't accidentally have both models fighting over RAM.
+
+<br>
+
+## 📱 §M · From a Phone
+
+> *Plug the same stick into a phone via USB-OTG. Half the kit was already designed for this.*
+
+Llamafile, redbean, and whisperfile are APE polyglots — they execute on x86_64 + ARM64 desktop OSes only. iOS and Android use different ABIs and sandboxed app models, so the AI core itself doesn't run on a phone (that's a separate project). **But every shipped data asset has a first-class consumer on Android and iOS:**
+
+| Capability | Path on USB | Android | iOS |
+|---|---|---|---|
+| Wikipedia (ZIM) | `zim/*.zim` | [Kiwix (F-Droid)](https://f-droid.org/packages/org.kiwix.kiwixmobile/) · [Play](https://play.google.com/store/apps/details?id=org.kiwix.kiwixmobile) | [Kiwix Reader](https://apps.apple.com/app/kiwix/id997079563) |
+| Maps (OSM) | `maps/<region>.osm.pbf` | [Organic Maps (F-Droid)](https://f-droid.org/packages/app.organicmaps/) · [Play](https://play.google.com/store/apps/details?id=app.organicmaps) | [Organic Maps](https://apps.apple.com/app/id1565437007) |
+| LLM chat | `ai-kit/models/*.gguf` | [PocketPal AI](https://play.google.com/store/apps/details?id=com.pocketpalai) | [PocketPal AI](https://apps.apple.com/app/pocketpal-ai/id6502579498) |
+| OCR | `ocr/index.html` | mobile Chrome (capture rear camera + paste) | mobile Safari |
+| DOOM | `doom/index.html` | mobile Chrome (touch controls included) | mobile Safari |
+| DevDocs | `docs-offline/index.html` | mobile Chrome | mobile Safari |
+
+**Discoverability:** the build copies `mobile.html` to the USB root next to `index.html`. Tapping `mobile.html` from your phone's file manager redirects to the dashboard's Mobile Field Kit — UA-detection swaps the desktop launcher cards for app-store buttons and offline-page links.
+
+**Install once, offline forever.** Get the apps over a connection one time, then unplug. The data files travel with the stick across every host you plug into.
+
+**Caveats:**
+- DOOM saves don't persist on mobile — they bridge to redbean's `/save` endpoint, and redbean isn't running on the phone. Same engine and WAD; just no save state.
+- USB-OTG reads are slower than internal storage. For Wikipedia or maps you'll use daily, copy the relevant file off the stick into your phone's internal storage once.
+- Lightning ports may need an Apple-branded adapter to deliver enough power to a USB stick.
+- iOS occasionally needs an unplug/replug to recognize a new drive.
 
 <br>
 
@@ -377,7 +404,7 @@ Five tools shipped with v0.4 — see [`docs/auxiliary-roadmap.md`](docs/auxiliar
 
 | Status | Item | Default size | What it adds |
 |---|------|------|-------------|
-| ✅ | **Whisperfile** (base.en) | ~148 MB | Audio → text via OpenAI Whisper. APE polyglot, port 8766. |
+| ✅ | **Whisperfile** (small.en) | ~497 MB | Audio → text via OpenAI Whisper. APE polyglot, port 8766. |
 | ✅ | **Tesseract OCR** (tesseract.js) | ~15 MB | Image → text. Pure browser, no server, runs from `file://`. |
 | ✅ | **Kiwix + Wikipedia** | ~395 MB (Simple EN) | Offline Wikipedia. Drop bigger ZIMs into `zim/`; kiwix-serve picks them up. Port 8767. |
 | ⚠ | **DevDocs offline** | varies | Programming reference. Manual setup — see [`docs/setup-devdocs.md`](docs/setup-devdocs.md). |
@@ -496,6 +523,6 @@ _________________________/_ __ \_____________
 
 **stay weird. stay prepared. stay offline.**
 
-`v0.7 · "the bunker speaks back" · 2026·05·08`
+`v0.7.2 · "phone home" · 2026·05·08`
 
 </div>

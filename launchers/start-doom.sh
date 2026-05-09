@@ -42,11 +42,17 @@ else
     exit 1
   fi
 
-  # `sh` prefix dodges WSL APE interception. -p port, -D docroot.
-  # .init.lua is baked into redbean.com's appended zip by build-usb.sh —
-  # no per-launch staging needed. cd $ROOT so saves.db lands at
-  # ai-kit/redbean/saves.db (relative to redbean's CWD).
-  ( cd "$ROOT" && sh "$REDBEAN" -p "$PORT" -D "$ROOT" -L "$LOG" > "$LOG" 2>&1 ) &
+  # `sh` prefix dodges WSL APE interception.
+  # .init.lua + doom/* are baked into redbean.com's appended zip by
+  # build-usb.sh — no per-launch staging needed. cd $ROOT so saves.db
+  # lands at ai-kit/redbean/saves.db (relative to redbean's CWD).
+  # -D points at an empty webroot subdir, not $ROOT: redbean uses CWD as
+  # implicit docroot when -D is absent, and on exFAT Cosmopolitan stat()
+  # strips group/other bits → mode 0600/0700 → fails redbean's static-serve
+  # "other readable" check → 403 on /doom/index.html. An empty docroot
+  # forces fallthrough to the appended zip (no permission check there).
+  mkdir -p "$ROOT/ai-kit/redbean/webroot"
+  ( cd "$ROOT" && sh "$REDBEAN" -p "$PORT" -D "$ROOT/ai-kit/redbean/webroot" -L "$LOG" > "$LOG" 2>&1 ) &
   RPID=$!
 
   echo "  Loading redbean (~2 seconds)..."
@@ -64,7 +70,7 @@ else
   done
 fi
 
-URL="http://127.0.0.1:$PORT/doom/"
+URL="http://127.0.0.1:$PORT/doom/index.html"
 echo "  Server up. Opening browser at $URL ..."
 xdg-open "$URL" 2>/dev/null || open "$URL" 2>/dev/null || true
 

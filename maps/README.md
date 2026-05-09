@@ -18,13 +18,15 @@ fuel; you bring the engine.
 The kit is built around the assumption that the **engine for offline
 maps lives on a phone**:
 
-- **Organic Maps** (Android, iOS, F-Droid) — recommended. FOSS, no
-  ads, no telemetry, exact same architecture goal as Doomstick.
-  https://organicmaps.app/
-- **OsmAnd** (Android, iOS) — more features, more complex. Free with
-  paid pro tier for vector renders.
-- **Maps.me** (older fork of what became Organic Maps; still works
-  but has ads and unclear future).
+- **Organic Maps** — recommended. FOSS, no ads, no telemetry, same
+  architecture goal as Doomstick.
+  - Android: [F-Droid](https://f-droid.org/packages/app.organicmaps/) · [Play](https://play.google.com/store/apps/details?id=app.organicmaps)
+  - iOS: [App Store](https://apps.apple.com/app/id1565437007)
+  - Site: https://organicmaps.app/
+- **OsmAnd** — more features, more complex. Free with a paid pro tier
+  for vector renders.
+  - Android: [F-Droid](https://f-droid.org/packages/net.osmand.plus/) · [Play](https://play.google.com/store/apps/details?id=net.osmand)
+  - iOS: [App Store](https://apps.apple.com/app/osmand-maps-travel-navigate/id934850257)
 
 ## Sideload protocol
 

@@ -864,6 +864,75 @@ footer {
   h1.doomstick { font-size: 56px; }
   .terminal-name { font-size: 30px; }
 }
+
+/* ===== MOBILE MODE ===============================================
+   Visibility flipped by body.mobile-mode (set by JS on touch-primary
+   devices via pointer:coarse + UA fallback). Desktop default keeps
+   mobile-only sections hidden. */
+
+.mobile-only { display: none; }
+body.mobile-mode .mobile-only { display: block; }
+body.mobile-mode .desktop-only { display: none; }
+
+/* App-store button row beneath a mobile field-kit card. Flex
+   distributes the F-Droid / Play / App Store buttons across the card. */
+.mobile-store-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 4px;
+}
+.mobile-store-row .terminal-action {
+  flex: 1 1 auto;
+  text-align: center;
+  font-size: 12px;
+  letter-spacing: 0.14em;
+  padding: 12px 14px;
+  min-width: 80px;
+}
+.mobile-store-row .terminal-action::before { content: ""; }
+
+/* Solo-action mobile cards (OCR, DOOM, DevDocs — static pages on the
+   same USB) get one full-width tap target instead of three. */
+.mobile-card .terminal-action.solo {
+  align-self: stretch;
+  text-align: center;
+  font-size: 14px;
+}
+
+/* In mobile mode, drop the desktop translate-on-hover (sticky :hover
+   on touchscreens leaves the card looking stuck) and grow tap targets. */
+body.mobile-mode .terminal:hover {
+  transform: none;
+  background: var(--asphalt);
+  border-color: var(--rust-edge);
+}
+body.mobile-mode .terminal-action { padding: 14px 22px; }
+
+/* AI CORE LED reads "mobile" instead of polling 8765 — no llamafile
+   running on the phone, so the indicator points at PocketPal/etc. */
+.status[data-state="mobile"] .read { color: var(--rad); }
+
+/* Path hint slug under the mobile-card description — slimmer than the
+   regular terminal-cmd block; hints at the on-USB path, not a literal
+   one to copy (Android USB-OTG mount paths vary by device). */
+.path-hint {
+  font-family: var(--font-crt);
+  font-size: 14px;
+  color: var(--bone-dim);
+  letter-spacing: 0.04em;
+  margin: -8px 0 14px;
+}
+.path-hint code {
+  background: transparent;
+  border-left: 0;
+  padding: 0;
+  color: var(--phos);
+  font-size: inherit;
+}
+
+/* Mobile field notes use the same .field-note shell — only the
+   numbering differs (FN·M01 vs FN·01). No new styles needed. */
 </style>
 </head>
 <body>
@@ -875,7 +944,7 @@ footer {
   <div class="ebs-bar">
     <span class="ebs-mark" aria-hidden="true">☢</span>
     <span class="ebs-title">Doomstick · Offline Emergency Assistance Network</span>
-    <span class="ebs-meta">v0·4 / 2026·05·07 / 127.0.0.1:8765</span>
+    <span class="ebs-meta">v0·7·2 / 2026·05·08 / 127.0.0.1:8765</span>
   </div>
   <div class="ebs-stripes" aria-hidden="true"></div>
 </div>
@@ -952,7 +1021,7 @@ footer {
 
 <!-- ============== §01 BRIEFING ============== -->
 
-<section>
+<section class="desktop-only">
   <h2 class="section-title"><span class="num">§01</span>Briefing</h2>
   <div class="briefing">
     Double-click the launcher for your operating system below. A console window opens, you pick a model,
@@ -963,9 +1032,21 @@ footer {
   </div>
 </section>
 
-<!-- ============== §02 INITIATION DEVICES ============== -->
+<section class="mobile-only">
+  <h2 class="section-title"><span class="num">§01</span>Briefing</h2>
+  <div class="briefing">
+    You're on a phone — desktop launchers don't apply here. Scroll to the <strong>Mobile Field Kit</strong>
+    below: each card points at the right consumer app for one capability the kit ships
+    (Wikipedia ZIM, OSM region, GGUF model, OCR, DOOM). Install the apps once, then the
+    USB's data files travel with you. Two pages on the kit work directly in this browser:
+    <a href="ocr/index.html">OCR</a> and <a href="doom/index.html">DOOM</a> — no app needed.
+    <span class="signoff">/// END TRANSMISSION ///</span>
+  </div>
+</section>
 
-<section>
+<!-- ============== §02 INITIATION DEVICES (DESKTOP) ============== -->
+
+<section class="desktop-only">
   <h2 class="section-title"><span class="num">§02</span>Initiation Devices</h2>
   <p class="section-lede">Three terminals, one mission. Pick your platform and double-click. The launcher kills any orphan llamafile, runs the model minimized, and pops the chat tab when it’s ready.</p>
 
@@ -993,6 +1074,76 @@ footer {
       <p class="terminal-desc">Run from a terminal. WSL works too — the launcher prepends <code>sh</code> to dodge APE interception. Copy the path and paste at the prompt.</p>
       <code class="terminal-cmd" data-cmd-for="start.sh">./start.sh</code>
       <button class="terminal-action" type="button" data-copy-path="start.sh">Copy Path</button>
+    </article>
+
+  </div>
+</section>
+
+<!-- ============== §02m MOBILE FIELD KIT ============== -->
+
+<section class="mobile-only" id="mobile">
+  <h2 class="section-title"><span class="num">§02m</span>Mobile Field Kit</h2>
+  <p class="section-lede">You've plugged the stick into a phone. Half the kit was already designed for this. Install one app per capability and the offline data files travel with you across hosts.</p>
+
+  <div class="grid grid-3 stagger">
+
+    <article class="terminal mobile-card">
+      <span class="terminal-tag">▸ MOBILE·WIKI</span>
+      <h3 class="terminal-name">Wikipedia</h3>
+      <p class="terminal-desc">Offline Wikipedia in your pocket. The <code>.zim</code> on this stick opens directly in Kiwix — same content as <code>start-wiki</code> on desktop.</p>
+      <p class="path-hint">on USB: <code>zim/&lt;wikipedia&gt;.zim</code></p>
+      <div class="mobile-store-row">
+        <a class="terminal-action" href="https://f-droid.org/packages/org.kiwix.kiwixmobile/" target="_blank" rel="noopener">F-Droid</a>
+        <a class="terminal-action" href="https://play.google.com/store/apps/details?id=org.kiwix.kiwixmobile" target="_blank" rel="noopener">Play</a>
+        <a class="terminal-action" href="https://apps.apple.com/app/kiwix/id997079563" target="_blank" rel="noopener">App Store</a>
+      </div>
+    </article>
+
+    <article class="terminal mobile-card">
+      <span class="terminal-tag">▸ MOBILE·MAPS</span>
+      <h3 class="terminal-name">Maps</h3>
+      <p class="terminal-desc">OSM regional data with offline routing and search. The <code>.pbf</code> imports into Organic Maps — free, no ads, no telemetry.</p>
+      <p class="path-hint">on USB: <code>maps/&lt;region&gt;.osm.pbf</code></p>
+      <div class="mobile-store-row">
+        <a class="terminal-action" href="https://f-droid.org/packages/app.organicmaps/" target="_blank" rel="noopener">F-Droid</a>
+        <a class="terminal-action" href="https://play.google.com/store/apps/details?id=app.organicmaps" target="_blank" rel="noopener">Play</a>
+        <a class="terminal-action" href="https://apps.apple.com/app/id1565437007" target="_blank" rel="noopener">App Store</a>
+      </div>
+    </article>
+
+    <article class="terminal mobile-card">
+      <span class="terminal-tag">▸ MOBILE·LLM</span>
+      <h3 class="terminal-name">LLM Chat</h3>
+      <p class="terminal-desc">Run Gemma 4 E4B (5 GB) on a recent flagship phone. PocketPal imports GGUFs from external storage. Slow on phones — usable for short turns; copy to internal storage for speed.</p>
+      <p class="path-hint">on USB: <code>ai-kit/models/*.gguf</code></p>
+      <div class="mobile-store-row">
+        <a class="terminal-action" href="https://play.google.com/store/apps/details?id=com.pocketpalai" target="_blank" rel="noopener">Play</a>
+        <a class="terminal-action" href="https://apps.apple.com/app/pocketpal-ai/id6502579498" target="_blank" rel="noopener">App Store</a>
+      </div>
+    </article>
+
+    <article class="terminal mobile-card">
+      <span class="terminal-tag">▸ MOBILE·OCR</span>
+      <h3 class="terminal-name">OCR</h3>
+      <p class="terminal-desc">Image → text in your mobile browser via tesseract.js. Take a photo of a sign, scan, or handwritten page. No upload, no server, no internet.</p>
+      <p class="path-hint">on USB: <code>ocr/index.html</code></p>
+      <a class="terminal-action solo" href="ocr/index.html">Open OCR</a>
+    </article>
+
+    <article class="terminal mobile-card">
+      <span class="terminal-tag">▸ MOBILE·DOOM</span>
+      <h3 class="terminal-name">DOOM</h3>
+      <p class="terminal-desc">Browser DOOM via emscripten/PrBoom+. On-screen touch controls included for phones. Saves don't persist on mobile (redbean isn't running on the phone — saves work on desktop).</p>
+      <p class="path-hint">on USB: <code>doom/index.html</code></p>
+      <a class="terminal-action solo" href="doom/index.html">Open DOOM</a>
+    </article>
+
+    <article class="terminal mobile-card">
+      <span class="terminal-tag">▸ MOBILE·DOCS</span>
+      <h3 class="terminal-name">DevDocs</h3>
+      <p class="terminal-desc">100+ programming references in a static HTML bundle, fully responsive on mobile. Manual setup before first use — see <a href="docs-offline/README.txt">docs-offline/README.txt</a>.</p>
+      <p class="path-hint">on USB: <code>docs-offline/index.html</code></p>
+      <a class="terminal-action solo" href="docs-offline/index.html">Open Docs</a>
     </article>
 
   </div>
@@ -1063,9 +1214,9 @@ footer {
   </div>
 </section>
 
-<!-- ============== §04 SIDE ARMS ============== -->
+<!-- ============== §04 SIDE ARMS (DESKTOP) ============== -->
 
-<section>
+<section class="desktop-only">
   <h2 class="section-title"><span class="num">§04</span>Side Arms</h2>
   <p class="section-lede">The kit is more than just the AI core. Five auxiliary tools ship alongside, each with its own launcher and its own port. Run them in parallel — chat, transcribe, look something up on offline Wikipedia, OCR a photo, all from the same stick.</p>
 
@@ -1122,9 +1273,9 @@ footer {
   </div>
 </section>
 
-<!-- ============== §05 AUXILIARY EQUIPMENT (BYO) ============== -->
+<!-- ============== §05 AUXILIARY EQUIPMENT (BYO, DESKTOP) ============== -->
 
-<section>
+<section class="desktop-only">
   <h2 class="section-title"><span class="num">§05</span>Auxiliary Equipment</h2>
   <p class="section-lede">Bring-your-own modules — drop any of the following alongside <code>ai-kit/</code> and they ride the USB.</p>
 
@@ -1154,9 +1305,9 @@ footer {
   </div>
 </section>
 
-<!-- ============== §06 FIELD NOTES ============== -->
+<!-- ============== §06 FIELD NOTES (DESKTOP) ============== -->
 
-<section>
+<section class="desktop-only">
   <h2 class="section-title"><span class="num">§06</span>Field Notes</h2>
   <p class="section-lede">Hard-earned operational guidance. Read before deploying in anger.</p>
 
@@ -1201,6 +1352,53 @@ footer {
   </div>
 </section>
 
+<!-- ============== §06m MOBILE FIELD NOTES ============== -->
+
+<section class="mobile-only">
+  <h2 class="section-title"><span class="num">§06m</span>Mobile Field Notes</h2>
+  <p class="section-lede">Hard-earned guidance for using this kit from a phone.</p>
+
+  <div class="grid grid-3 stagger">
+
+    <article class="field-note">
+      <div class="note-num">FN·M01</div>
+      <h3>USB-OTG might need an adapter</h3>
+      <p>Modern phones use USB-C or Lightning; full-size USB-A sticks need an OTG adapter. Most phones recognize the stick within a few seconds — pull down the notification shade and tap the storage entry to browse, or open your file manager / Files app.</p>
+    </article>
+
+    <article class="field-note">
+      <div class="note-num">FN·M02</div>
+      <h3>Permissions on first install</h3>
+      <p>Kiwix, Organic Maps, and PocketPal will all ask for storage access on first run. Grant it — that's how they read the kit's files. iOS users go through the Files app picker; Android uses the system file picker or direct path.</p>
+    </article>
+
+    <article class="field-note">
+      <div class="note-num">FN·M03</div>
+      <h3>Install once, offline forever</h3>
+      <p>Install the apps over a connection (one time), then unplug. The data files travel with the stick — every host you plug into already has the apps. The internet is optional after first install.</p>
+    </article>
+
+    <article class="field-note">
+      <div class="note-num">FN·M04</div>
+      <h3>Copy to phone for daily use</h3>
+      <p>USB-OTG reads are slower than internal storage. For Wikipedia or maps you'll use daily, copy the relevant file off the stick into your phone's internal storage once. Saves the OTG step on every launch.</p>
+    </article>
+
+    <article class="field-note">
+      <div class="note-num">FN·M05</div>
+      <h3>iOS file manager quirk</h3>
+      <p>iOS shows USB drives in the Files app under "Browse → Locations". If the drive doesn't appear, unplug and replug — iOS sometimes needs a second handshake. Lightning ports may need an Apple-branded adapter to deliver enough power.</p>
+    </article>
+
+    <article class="field-note">
+      <div class="note-num">FN·M06</div>
+      <h3>DOOM saves are desktop-only</h3>
+      <p>Browser DOOM works on the phone, but saves persist via redbean's <code>/save</code> endpoint — and redbean only runs on desktop. Mobile DOOM is a fresh playthrough each session. Same engine, same WAD, just no save state.</p>
+    </article>
+
+  </div>
+</section>
+
 </main>
 
 <footer>
@@ -1218,6 +1416,42 @@ footer {
 </footer>
 
 <script>
+/* Mobile mode detection.
+ * Touch-primary devices get a different §02 (Mobile Field Kit instead of
+ * desktop launcher cards) and skip the 8765 ping (no llamafile running on
+ * a phone). pointer:coarse fires on phones/tablets; pair with a UA check
+ * so a Surface/touch-laptop with a real mouse stays on desktop mode.
+ * Exposed on window so the ping IIFE below can early-return. */
+window.__doomstickMobile = (function () {
+  if (!window.matchMedia) {
+    return /Mobi|Android|iPhone|iPad/.test(navigator.userAgent || '');
+  }
+  var coarse = window.matchMedia('(pointer: coarse)').matches;
+  var ua     = /Mobi|Android|iPhone|iPad/.test(navigator.userAgent || '');
+  // pointer:coarse alone is enough on phones; UA check catches edge
+  // cases where some Android browsers report fine pointer.
+  return coarse || ua;
+})();
+
+if (window.__doomstickMobile) {
+  document.body.classList.add('mobile-mode');
+  // Flip the AI CORE LED to a mobile-aware label — pinging 8765 is
+  // pointless on a phone, so the LED points at PocketPal instead.
+  var aiNode = document.getElementById('ai-status');
+  if (aiNode) {
+    aiNode.dataset.state = 'mobile';
+    var aiLed  = aiNode.querySelector('.led');
+    var aiRead = aiNode.querySelector('.read');
+    if (aiLed)  aiLed.className  = 'led amber';
+    if (aiRead) aiRead.textContent = '[mobile · LLM app]';
+  }
+  // Power LED reads "phone" instead of "D:\" — we don't know the
+  // USB-OTG mount path on Android (varies per device) and it's not
+  // useful to display anyway.
+  var powerRow = document.querySelector('.status[data-state="usb"] .read');
+  if (powerRow) powerRow.textContent = '[usb · phone]';
+}
+
 /* Live status check.
  * Pings the local llamafile server. If it answers, flips the AI CORE LED
  * from STAND·BY (red) to ARMED (green/blink). Polls every 6 s.
@@ -1227,6 +1461,8 @@ footer {
  * surface a CORS error which we silently catch and treat as offline.
  */
 (function () {
+  // Mobile users have no llamafile to ping — skip the polling entirely.
+  if (window.__doomstickMobile) return;
   var node  = document.getElementById('ai-status');
   if (!node) return;
   var led   = node.querySelector('.led');

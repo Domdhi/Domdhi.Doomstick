@@ -150,6 +150,40 @@ full pending menu and per-item rationale.
 
 
 -------------------------------------------------------------------------
+FROM A PHONE
+-------------------------------------------------------------------------
+
+Plug the USB into your phone via USB-OTG (Android) or Lightning/USB-C
+(iOS via the Files app). Open mobile.html in your phone browser -- it
+redirects to the dashboard's Mobile Field Kit, which points at the
+right consumer app for each capability.
+
+What works on a phone today:
+
+  Wikipedia ZIM     -> Kiwix app          (F-Droid / Play / App Store)
+  OSM regional PBF  -> Organic Maps app   (F-Droid / Play / App Store)
+  GGUF models       -> PocketPal AI app   (Play / App Store)
+                       (slow on phones; usable for short turns)
+  ocr/index.html    -> mobile browser     (no app, take a photo)
+  doom/index.html   -> mobile browser     (no app, touch controls)
+  docs-offline/     -> mobile browser     (no app, responsive)
+
+What does NOT work on a phone:
+
+  start.bat / .command / .sh   -- desktop launchers, irrelevant on phone
+  llamafile (the AI core)      -- different ABI; phone can't execute it
+  Whisperfile, kiwix-serve     -- same family
+  redbean's /save and /tts     -- redbean isn't running on the phone
+
+DOOM saves only persist on desktop (saves bridge to redbean). DOOM on
+mobile is a fresh playthrough each session.
+
+Install the apps once over a connection, then unplug. The kit's data
+files travel with the stick across hosts. Internet is optional after
+first install.
+
+
+-------------------------------------------------------------------------
 LICENSE
 -------------------------------------------------------------------------
 

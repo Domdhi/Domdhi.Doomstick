@@ -56,7 +56,7 @@ REM Clean up any orphan llamafile.exe from a previous run.
 taskkill /F /IM llamafile.exe >nul 2>&1
 
 REM Preflight: only block if something is actively LISTENING on the port.
-REM TIME_WAIT and other transient states are ignored — they don't block bind().
+REM TIME_WAIT and other transient states are ignored -- they don't block bind().
 powershell -NoProfile -Command "$c = Get-NetTCPConnection -LocalPort %PORT% -State Listen -ErrorAction SilentlyContinue; if ($c) { $p = Get-Process -Id $c[0].OwningProcess -ErrorAction SilentlyContinue; Write-Host ('  Port %PORT% is being held by PID ' + $c[0].OwningProcess + ' (' + $p.ProcessName + '.exe).') -ForegroundColor Red; Write-Host '  Close that app or edit this .bat to set PORT to a free port.' -ForegroundColor Red; exit 1 } else { exit 0 }"
 if errorlevel 1 ( pause & endlocal & exit /b 1 )
 

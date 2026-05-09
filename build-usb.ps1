@@ -54,8 +54,9 @@ Examples:
 
 Defaults / 'full' bundle download size:
   AI core    ~22.3 GB   (43 MB runtime + 5 GB E4B + 17 GB 26B + 329 MB embed)
-  Side arms  ~ 560 MB   (whisperfile + kiwix + simple-en zim + tesseract + monaco pbf)
-  Total      ~22.9 GB
+  Side arms  ~ 910 MB   (whisperfile small.en + kiwix + simple-en zim + tesseract + monaco pbf)
+  TTS        ~ 210 MB   (sherpa-onnx per-OS + Supertonic int8 model)
+  Total      ~23.3 GB
 
 Re-runs skip files already present with the right size.
 "@ | Write-Host
@@ -93,9 +94,9 @@ function Apply-BakedDefaults {
     $script:DoomIncludeEmb      = 1
 
     $script:DoomIncludeWiki     = 1
-    $script:DoomZimUrl          = 'https://download.kiwix.org/zim/wikipedia/wikipedia_en_simple_all_nopic_2024-06.zim'
-    $script:DoomZimFile         = 'wikipedia_en_simple_all_nopic_2024-06.zim'
-    $script:DoomZimBytes        = 395000000
+    $script:DoomZimUrl          = 'https://download.kiwix.org/zim/wikipedia/wikipedia_en_simple_all_nopic_2026-02.zim'
+    $script:DoomZimFile         = 'wikipedia_en_simple_all_nopic_2026-02.zim'
+    $script:DoomZimBytes        = 966064955
     $script:DoomZimLabel        = 'Simple English'
 
     $script:DoomIncludeOsm      = 1
@@ -104,10 +105,10 @@ function Apply-BakedDefaults {
     $script:DoomPbfBytes        = 700000
 
     $script:DoomIncludeWhisper  = 1
-    $script:DoomWhisperUrl      = 'https://huggingface.co/Mozilla/whisperfile/resolve/main/whisper-base.en.llamafile?download=true'
-    $script:DoomWhisperFile     = 'whisper-base.en.llamafile'
-    $script:DoomWhisperBytes    = 148000000
-    $script:DoomWhisperLabel    = 'base.en'
+    $script:DoomWhisperUrl      = 'https://huggingface.co/Mozilla/whisperfile/resolve/main/whisper-small.en.llamafile?download=true'
+    $script:DoomWhisperFile     = 'whisper-small.en.llamafile'
+    $script:DoomWhisperBytes    = 497053916
+    $script:DoomWhisperLabel    = 'small.en'
 
     $script:DoomIncludeOcr      = 1
     $script:DoomOcrLangs        = 'eng'
@@ -605,8 +606,8 @@ $SherpaLinuxUrl   = "https://github.com/k2-fsa/sherpa-onnx/releases/download/$Sh
 $SherpaLinuxBytes = 30000000
 $SherpaMacUrl     = "https://github.com/k2-fsa/sherpa-onnx/releases/download/$SherpaVersion/sherpa-onnx-$SherpaVersion-osx-arm64-shared.tar.bz2"
 $SherpaMacBytes   = 30000000
-$SherpaWinUrl     = "https://github.com/k2-fsa/sherpa-onnx/releases/download/$SherpaVersion/sherpa-onnx-non-streaming-tts-x64-$SherpaVersion.exe"
-$SherpaWinBytes   = 20400000
+$SherpaWinUrl     = "https://github.com/k2-fsa/sherpa-onnx/releases/download/$SherpaVersion/sherpa-onnx-$SherpaVersion-win-x64-shared-MT-Release.tar.bz2"
+$SherpaWinBytes   = 23278074
 
 $SupertonicUrl     = 'https://github.com/k2-fsa/sherpa-onnx/releases/download/tts-models/sherpa-onnx-supertonic-tts-int8-2026-03-06.tar.bz2'
 $SupertonicArchive = 'sherpa-onnx-supertonic-tts-int8-2026-03-06.tar.bz2'
@@ -708,28 +709,12 @@ if ($DoomIncludeOsm -eq 1 -and $DoomPbfUrl) {
 }
 
 # redbean — local platform layer (port 8768)
+# Fetch + stage; the zip-bake (.init.lua + doom/* if included) happens
+# AFTER DOOM staging in a single combined step below.
 if ($DoomIncludeRedbean -eq 1) {
     Get-File -Url $RedbeanUrl -Dest (Join-Path $RedbeanDir $RedbeanFile) -Expected $RedbeanBytes -Label 'redbean 3.0.0 (~5.5 MB)'
     Copy-Item -LiteralPath (Join-Path $Repo 'redbean\.init.lua')  -Destination (Join-Path $RedbeanDir '.init.lua')  -Force
     Copy-Item -LiteralPath (Join-Path $Repo 'redbean\README.txt') -Destination (Join-Path $RedbeanDir 'README.txt') -Force
-
-    # Bake .init.lua into the redbean.com polyglot's appended zip. redbean
-    # reads .init.lua from its asset zip; -D overlays static files but does
-    # NOT expose .init.lua, and -A is broken in 3.0.0. We use .NET ZipArchive
-    # so this works on Windows hosts with no zip-cli dependency.
-    Add-Type -AssemblyName System.IO.Compression
-    Add-Type -AssemblyName System.IO.Compression.FileSystem
-    $rbBin = Join-Path $RedbeanDir $RedbeanFile
-    $initSrc = Join-Path $RedbeanDir '.init.lua'
-    $zip = [System.IO.Compression.ZipFile]::Open($rbBin, [System.IO.Compression.ZipArchiveMode]::Update)
-    try {
-        $existing = $zip.GetEntry('.init.lua')
-        if ($existing) { $existing.Delete() }
-        [System.IO.Compression.ZipFileExtensions]::CreateEntryFromFile($zip, $initSrc, '.init.lua') | Out-Null
-    } finally {
-        $zip.Dispose()
-    }
-    Write-Host "  baked .init.lua into $rbBin"
 }
 
 # DOOM — Dwasm port (vendored under doom/ in repo) + shareware DOOM1.WAD (fetched)
@@ -737,6 +722,156 @@ if ($DoomIncludeDoom -eq 1) {
     Get-File -Url $DoomWadUrl -Dest (Join-Path $DoomDir $DoomWadFile) -Expected $DoomWadBytes -Label 'DOOM1.WAD shareware (~4.2 MB)'
     foreach ($f in @('index.html', 'index.js', 'index.data', 'index.wasm', 'LICENSE-GPL-2.0', 'NOTICE.md')) {
         Copy-Item -LiteralPath (Join-Path $Repo "doom\$f") -Destination (Join-Path $DoomDir $f) -Force
+    }
+}
+
+# Bake .init.lua (+ doom/* when shipped) into redbean.com's appended zip.
+#
+# Why baked into the zip and not just the static -D <docroot> overlay:
+#   - redbean reads .init.lua from its asset zip; -D overlays static files
+#     but does NOT expose .init.lua as an asset, and the -A runtime-add flag
+#     is broken in 3.0.0 (StoreAsset regression).
+#   - When the USB is exFAT (typical) and accessed from native Windows,
+#     Cosmopolitan's stat() reports directories as mode 040700, which fails
+#     redbean's static-serve "other readable" check → 403 on /doom/. Files
+#     served from the appended zip skip that filesystem check entirely.
+#
+# Why this is not a one-line .NET ZipArchive Update call (regression hunted
+# down 2026-05-08): redbean.com is an APE polyglot — an MZ-prefixed PE/ELF/
+# Mach-O/shell prelude with a ZIP appended at the tail. .NET's ZipArchive
+# treats the input stream as a pure zip, and on Update it overwrites the
+# file from offset 0 with a fresh pure-zip body — silently destroying the
+# prelude. The result is a 3.5 MB pure-zip file that Windows refuses to
+# launch ("not a valid application") and that no other OS can run either.
+#
+# Workaround: capture the prelude bytes (everything before the first local
+# file header) before the .NET op, let .NET do its thing on the file in
+# place, then re-prepend the prelude and shift every absolute offset in
+# the new zip's central directory by +preludeSize so the EOCD and CD entry
+# offsets remain accurate against the final polyglot. Idempotent.
+function Invoke-PolyglotZipBake {
+    param(
+        [Parameter(Mandatory)][string]$PolyglotPath,
+        [Parameter(Mandatory)][hashtable[]]$Entries
+    )
+
+    $bytes = [System.IO.File]::ReadAllBytes($PolyglotPath)
+    if ($bytes.Length -lt 100) { throw "polyglot bake: input too small ($($bytes.Length) bytes): $PolyglotPath" }
+    if ($bytes[0] -ne 0x4D -or $bytes[1] -ne 0x5A) {
+        throw "polyglot bake: input does not start with MZ magic (got 0x$($bytes[0].ToString('X2'))$($bytes[1].ToString('X2'))). File is corrupted from a prior failed bake — delete it and re-run build-usb.ps1 to refetch."
+    }
+
+    # Find EOCD (PK\x05\x06) by scanning backwards from end. Max comment is 64KB.
+    $eocdPos = -1
+    $minScan = [Math]::Max(0, $bytes.Length - 65557)
+    for ($i = $bytes.Length - 22; $i -ge $minScan; $i--) {
+        if ($bytes[$i] -eq 0x50 -and $bytes[$i+1] -eq 0x4B -and $bytes[$i+2] -eq 0x05 -and $bytes[$i+3] -eq 0x06) {
+            $eocdPos = $i; break
+        }
+    }
+    if ($eocdPos -lt 0) { throw "polyglot bake: no EOCD record found in $PolyglotPath" }
+
+    # Read first CD entry's local-header-offset (absolute, includes prelude).
+    $cdOffset = [BitConverter]::ToUInt32($bytes, $eocdPos + 16)
+    if ($cdOffset -ge $bytes.Length) { throw "polyglot bake: invalid CD offset $cdOffset" }
+    $firstLfhOffset = [BitConverter]::ToUInt32($bytes, $cdOffset + 42)
+    if ($firstLfhOffset -ge $bytes.Length) { throw "polyglot bake: invalid LFH offset $firstLfhOffset" }
+    if ($bytes[$firstLfhOffset] -ne 0x50 -or $bytes[$firstLfhOffset+1] -ne 0x4B -or $bytes[$firstLfhOffset+2] -ne 0x03 -or $bytes[$firstLfhOffset+3] -ne 0x04) {
+        throw "polyglot bake: first CD entry's offset $firstLfhOffset does not point at a local file header"
+    }
+    $preludeSize = [int]$firstLfhOffset
+    $prelude = New-Object byte[] $preludeSize
+    [Array]::Copy($bytes, 0, $prelude, 0, $preludeSize)
+
+    # Run .NET ZipArchive Update on the file as-is. It will read the existing
+    # entries (offsets are polyglot-aware so this works), then on dispose it
+    # rewrites the file from offset 0 with a pure-zip body. Prelude is lost.
+    Add-Type -AssemblyName System.IO.Compression
+    Add-Type -AssemblyName System.IO.Compression.FileSystem
+    $zip = [System.IO.Compression.ZipFile]::Open($PolyglotPath, [System.IO.Compression.ZipArchiveMode]::Update)
+    try {
+        foreach ($e in $Entries) {
+            $existing = $zip.GetEntry($e.Path)
+            if ($existing) { $existing.Delete() }
+            [System.IO.Compression.ZipFileExtensions]::CreateEntryFromFile($zip, $e.Src, $e.Path) | Out-Null
+        }
+    } finally {
+        $zip.Dispose()
+    }
+
+    # Read the rewritten pure-zip file. Find its new EOCD and CD.
+    $newBytes = [System.IO.File]::ReadAllBytes($PolyglotPath)
+    $newEocdPos = -1
+    $newMinScan = [Math]::Max(0, $newBytes.Length - 65557)
+    for ($i = $newBytes.Length - 22; $i -ge $newMinScan; $i--) {
+        if ($newBytes[$i] -eq 0x50 -and $newBytes[$i+1] -eq 0x4B -and $newBytes[$i+2] -eq 0x05 -and $newBytes[$i+3] -eq 0x06) {
+            $newEocdPos = $i; break
+        }
+    }
+    if ($newEocdPos -lt 0) { throw "polyglot bake: rewritten zip has no EOCD" }
+    $newCdOffset = [BitConverter]::ToUInt32($newBytes, $newEocdPos + 16)
+    $newCdSize   = [BitConverter]::ToUInt32($newBytes, $newEocdPos + 12)
+
+    # Shift CD-start offset in EOCD by +preludeSize.
+    [Array]::Copy([BitConverter]::GetBytes([uint32]($newCdOffset + $preludeSize)), 0, $newBytes, $newEocdPos + 16, 4)
+
+    # Walk every CD entry, shift its local-header-offset by +preludeSize.
+    $pos = [int]$newCdOffset
+    $cdEnd = [int]$newCdOffset + [int]$newCdSize
+    while ($pos -lt $cdEnd) {
+        $sig = [BitConverter]::ToUInt32($newBytes, $pos)
+        if ($sig -ne 0x02014b50) { throw "polyglot bake: expected CD signature at $pos, got 0x$($sig.ToString('X8'))" }
+        $filenameLen = [BitConverter]::ToUInt16($newBytes, $pos + 28)
+        $extraLen    = [BitConverter]::ToUInt16($newBytes, $pos + 30)
+        $commentLen  = [BitConverter]::ToUInt16($newBytes, $pos + 32)
+        $lfhOff = [BitConverter]::ToUInt32($newBytes, $pos + 42)
+        [Array]::Copy([BitConverter]::GetBytes([uint32]($lfhOff + $preludeSize)), 0, $newBytes, $pos + 42, 4)
+        $pos += 46 + $filenameLen + $extraLen + $commentLen
+    }
+
+    # Concatenate prelude + offset-corrected zip; write back atomically.
+    $tmp = "$PolyglotPath.bake.tmp"
+    $fs = [System.IO.File]::Open($tmp, [System.IO.FileMode]::Create, [System.IO.FileAccess]::Write)
+    try {
+        $fs.Write($prelude, 0, $prelude.Length)
+        $fs.Write($newBytes, 0, $newBytes.Length)
+    } finally {
+        $fs.Dispose()
+    }
+    Move-Item -LiteralPath $tmp -Destination $PolyglotPath -Force
+
+    # Sanity-verify: still polyglot, still sized like one.
+    $verify = Get-Item -LiteralPath $PolyglotPath
+    $head = [System.IO.File]::ReadAllBytes($PolyglotPath)[0..1]
+    if ($head[0] -ne 0x4D -or $head[1] -ne 0x5A) {
+        throw "polyglot bake: APE prelude lost after re-stitch (got 0x$($head[0].ToString('X2'))$($head[1].ToString('X2')))"
+    }
+    if ($verify.Length -lt $preludeSize) {
+        throw "polyglot bake: output ($($verify.Length) bytes) smaller than original prelude ($preludeSize bytes)"
+    }
+}
+
+if ($DoomIncludeRedbean -eq 1) {
+    $rbBin = Join-Path $RedbeanDir $RedbeanFile
+    $entries = @(
+        @{ Src = (Join-Path $RedbeanDir '.init.lua'); Path = '.init.lua' }
+    )
+    if ($DoomIncludeDoom -eq 1) {
+        foreach ($f in @('index.html', 'index.js', 'index.data', 'index.wasm', $DoomWadFile, 'LICENSE-GPL-2.0', 'NOTICE.md')) {
+            $entries += @{ Src = (Join-Path $DoomDir $f); Path = "doom/$f" }
+        }
+    }
+
+    Invoke-PolyglotZipBake -PolyglotPath $rbBin -Entries $entries
+
+    # Keep redbean.com.exe in sync with redbean.com so start-doom.bat launches
+    # the freshly-baked binary, not a stale .exe from a prior deploy.
+    Copy-Item -LiteralPath $rbBin -Destination "$rbBin.exe" -Force
+
+    if ($DoomIncludeDoom -eq 1) {
+        Write-Host "  baked .init.lua + doom/ into $rbBin (+.exe synced)"
+    } else {
+        Write-Host "  baked .init.lua into $rbBin (+.exe synced)"
     }
 }
 
@@ -798,10 +933,30 @@ if ($DoomIncludeTts -eq 1) {
         }
     }
 
-    # Windows runtime — single statically-built .exe. No extraction.
+    # Windows runtime — multi-file shared tarball, same shape as Linux/Mac.
+    # MT-Release variant: static CRT, so no Visual C++ Redistributable
+    # required on host. The standalone single-.exe download from the same
+    # release is the GUI app, not the CLI we need — see CLAUDE.md gotcha.
+    # Guard requires both the .exe AND onnxruntime.dll — earlier kits
+    # shipped the GUI .exe under this same filename, which lacks
+    # onnxruntime.dll, so refetch the proper CLI archive over it.
     $winBin = Join-Path $SherpaWinDir 'sherpa-onnx-offline-tts.exe'
-    if (-not (Test-Path -LiteralPath $winBin)) {
-        Get-File -Url $SherpaWinUrl -Dest $winBin -Expected $SherpaWinBytes -Label "sherpa-onnx $SherpaVersion win-x64 (single .exe)"
+    $winOrt = Join-Path $SherpaWinDir 'onnxruntime.dll'
+    if (-not (Test-Path -LiteralPath $winBin) -or -not (Test-Path -LiteralPath $winOrt)) {
+        if (Test-Path -LiteralPath $winBin) { Remove-Item -LiteralPath $winBin -Force }
+        $winTbz = Join-Path $SherpaWinDir 'sherpa-onnx.tar.bz2'
+        Get-File -Url $SherpaWinUrl -Dest $winTbz -Expected $SherpaWinBytes -Label "sherpa-onnx $SherpaVersion win-x64 (MT-Release)"
+        if (Expand-TarBz2 -Archive $winTbz -Dest $SherpaWinDir) {
+            foreach ($sub in @('bin', 'lib')) {
+                $subPath = Join-Path $SherpaWinDir $sub
+                if (Test-Path -LiteralPath $subPath) {
+                    Get-ChildItem -LiteralPath $subPath -Force |
+                        Move-Item -Destination $SherpaWinDir -Force
+                    Remove-Item -LiteralPath $subPath -Recurse -Force
+                }
+            }
+            Remove-Item -LiteralPath $winTbz -Force
+        }
     }
 
     # Supertonic int8 model — shared across all 3 OS binaries.
@@ -837,6 +992,7 @@ Copy-Item -LiteralPath (Join-Path $Repo 'maps\README.md')          -Destination 
 Copy-Item -LiteralPath (Join-Path $Repo 'docs-offline\README.txt') -Destination (Join-Path $Target 'docs-offline\README.txt') -Force
 
 Copy-Item -LiteralPath (Join-Path $Repo 'dashboard\index.html')    -Destination (Join-Path $Target 'index.html')              -Force
+Copy-Item -LiteralPath (Join-Path $Repo 'dashboard\mobile.html')   -Destination (Join-Path $Target 'mobile.html')             -Force
 Copy-Item -LiteralPath (Join-Path $Repo 'dashboard\README.txt')    -Destination (Join-Path $Target 'README.txt')              -Force
 
 Write-Host ''

@@ -39,6 +39,95 @@ canvas{border:0;background-color:#000;width:calc(min(100vw,100vh * 4/3));height:
   canvas{width:calc(min(100dvw,100dvh * 4/3));height:calc(min(100dvh,100dvw * 0.75));margin-top:calc(0.5 * (100dvh - (min(100dvh,100dvw * 0.75))))}
 }
 footer{font-size:10px;margin-top:8px}
+
+/* ===== TOUCH CONTROLS ===========================================
+   Hidden by default; shown when body has class "mobile-touch" (added
+   by the touch-controls IIFE below on pointer:coarse devices). The
+   controls dispatch synthesized KeyboardEvents into document so the
+   emscripten DOOM build picks them up via its existing key handlers
+   — no engine changes. */
+
+.touch-controls { display: none; }
+body.mobile-touch .touch-controls {
+  display: block;
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  z-index: 100;
+  user-select: none;
+  -webkit-user-select: none;
+  -webkit-touch-callout: none;
+}
+
+/* D-pad — four arrow buttons in a cross, lower-left. */
+.dpad {
+  position: fixed;
+  bottom: 18px;
+  left: 18px;
+  width: 168px;
+  height: 168px;
+  pointer-events: none;
+}
+.dpad-btn {
+  position: absolute;
+  width: 56px;
+  height: 56px;
+  background: rgba(252, 208, 0, 0.32);
+  border: 2px solid rgba(252, 208, 0, 0.65);
+  border-radius: 6px;
+  pointer-events: auto;
+  font-family: monospace;
+  font-size: 28px;
+  color: #0a0a08;
+  font-weight: 800;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  -webkit-tap-highlight-color: transparent;
+  touch-action: none;
+}
+.dpad-btn.up    { top: 0;    left: 56px; }
+.dpad-btn.down  { bottom: 0; left: 56px; }
+.dpad-btn.left  { left: 0;   top: 56px; }
+.dpad-btn.right { right: 0;  top: 56px; }
+.dpad-btn.pressed { background: rgba(252, 208, 0, 0.7); }
+
+/* Action cluster — fire (large) + use + weapon cycle + menu, lower-right. */
+.action-cluster {
+  position: fixed;
+  bottom: 18px;
+  right: 18px;
+  display: grid;
+  grid-template-columns: 70px 90px;
+  grid-template-rows: 70px 90px;
+  gap: 8px;
+  pointer-events: none;
+}
+.action-btn {
+  pointer-events: auto;
+  background: rgba(198, 61, 47, 0.4);
+  border: 2px solid rgba(198, 61, 47, 0.7);
+  color: #ece2c8;
+  font-family: "Big Shoulders Stencil Display", Impact, sans-serif;
+  font-weight: 800;
+  font-size: 13px;
+  letter-spacing: 0.12em;
+  border-radius: 6px;
+  -webkit-tap-highlight-color: transparent;
+  touch-action: none;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.action-btn.fire   { grid-column: 2; grid-row: 2; font-size: 16px; background: rgba(198, 61, 47, 0.55); border-color: rgba(198, 61, 47, 0.9); }
+.action-btn.use    { grid-column: 1; grid-row: 2; }
+.action-btn.weap   { grid-column: 2; grid-row: 1; background: rgba(74, 58, 29, 0.5); border-color: rgba(252, 208, 0, 0.5); color: #fcd000; }
+.action-btn.menu   { grid-column: 1; grid-row: 1; background: rgba(74, 58, 29, 0.5); border-color: rgba(252, 208, 0, 0.4); color: #c8bea2; font-size: 11px; }
+.action-btn.pressed { filter: brightness(1.5); }
+
+/* Hide the address-bar nudge from the iOS rubber-band scroll while in
+   game by letting the body fill the viewport. */
+body.mobile-touch { overflow: hidden; }
 </style>
 
 <div id=statusContainer class=textInfo>
@@ -53,6 +142,24 @@ footer{font-size:10px;margin-top:8px}
 
 <textarea id=output readonly></textarea>
 <canvas id=canvas oncontextmenu=event.preventDefault(); tabindex=-1></canvas>
+
+<!-- Touch controls — only displayed on pointer:coarse devices via the
+     IIFE at the bottom of <script>. Synthesized keyboard events drive
+     PrBoom's existing input layer; no engine changes. -->
+<div class="touch-controls" aria-hidden="true">
+  <div class="dpad">
+    <button class="dpad-btn up"    id="tc-up"    aria-label="Move forward">↑</button>
+    <button class="dpad-btn down"  id="tc-down"  aria-label="Move back">↓</button>
+    <button class="dpad-btn left"  id="tc-left"  aria-label="Turn left">←</button>
+    <button class="dpad-btn right" id="tc-right" aria-label="Turn right">→</button>
+  </div>
+  <div class="action-cluster">
+    <button class="action-btn menu" id="tc-menu" aria-label="Menu (Escape)">MENU</button>
+    <button class="action-btn weap" id="tc-weap" aria-label="Cycle weapon">WPN</button>
+    <button class="action-btn use"  id="tc-use"  aria-label="Use / Open / Confirm">USE</button>
+    <button class="action-btn fire" id="tc-fire" aria-label="Fire (Ctrl)">FIRE</button>
+  </div>
+</div>
 
 <script>
 // ----------------------------------------------------------------------
@@ -339,4 +446,121 @@ async function autoBoot() {
 
 document.addEventListener('DOMContentLoaded', autoBoot);
 window.addEventListener('resize', () => Module.winResized && Module.winResized());
+
+// ----------------------------------------------------------------------
+// Touch controls — synthesize keyboard events from on-screen D-pad +
+// action buttons so DOOM is playable on phones. Pointer Events handle
+// touch + mouse + stylus uniformly; pointerleave/cancel covers the
+// "slid finger off the button" case so keys don't get stuck pressed.
+// ----------------------------------------------------------------------
+
+(function () {
+  // pointer:coarse fires on phones / tablets; on desktop with a mouse,
+  // we leave DOOM entirely alone (touch overlay would just take up screen
+  // real estate). Also kill the pointer-lock attempt — it's broken on
+  // mobile browsers and steals taps.
+  const isTouchPrimary = window.matchMedia
+    && window.matchMedia('(pointer: coarse)').matches;
+  if (!isTouchPrimary) return;
+
+  document.body.classList.add('mobile-touch');
+  Module._canLockPointer       = false;
+  Module._attemptPointerLock   = function () { return false; };
+  Module.captureMouse          = function () {};
+
+  // Dispatch a synthesized KeyboardEvent. Modern browsers won't honour
+  // keyCode/which from the constructor, so re-define them post-hoc.
+  function fireKey(type, keyName, code, keyCode) {
+    const ev = new KeyboardEvent(type, {
+      key: keyName,
+      code: code,
+      bubbles: true,
+      cancelable: true,
+      composed: true,
+    });
+    try {
+      Object.defineProperty(ev, 'keyCode', { configurable: true, get: () => keyCode });
+      Object.defineProperty(ev, 'which',   { configurable: true, get: () => keyCode });
+    } catch (_) { /* old browser; emscripten still picks up key/code */ }
+    document.dispatchEvent(ev);
+    if (canvasElement) canvasElement.dispatchEvent(ev);
+  }
+
+  // Hold-style binding: keydown on press, keyup on release. Pointer
+  // Events handle touch + mouse uniformly; the four release variants
+  // (up/leave/cancel/out) catch every way a touch can end including
+  // sliding off the button — without them keys get stuck "pressed".
+  function bindHold(btnId, keyName, code, keyCode) {
+    const btn = document.getElementById(btnId);
+    if (!btn) return;
+    let pressed = false;
+    function down(e) {
+      e.preventDefault();
+      if (pressed) return;
+      pressed = true;
+      btn.classList.add('pressed');
+      fireKey('keydown', keyName, code, keyCode);
+    }
+    function up(e) {
+      if (!pressed) return;
+      pressed = false;
+      btn.classList.remove('pressed');
+      fireKey('keyup', keyName, code, keyCode);
+    }
+    btn.addEventListener('pointerdown',   down);
+    btn.addEventListener('pointerup',     up);
+    btn.addEventListener('pointerleave',  up);
+    btn.addEventListener('pointercancel', up);
+    btn.addEventListener('pointerout',    up);
+  }
+
+  // Tap-style binding: keydown immediately, keyup after a short delay.
+  // Used for menu (Esc) and weapon-cycle — single-shot, not held.
+  function bindTap(btnId, getKey) {
+    const btn = document.getElementById(btnId);
+    if (!btn) return;
+    btn.addEventListener('pointerdown', function (e) {
+      e.preventDefault();
+      const k = getKey();
+      btn.classList.add('pressed');
+      fireKey('keydown', k.keyName, k.code, k.keyCode);
+      setTimeout(function () {
+        fireKey('keyup', k.keyName, k.code, k.keyCode);
+        btn.classList.remove('pressed');
+      }, 60);
+    });
+  }
+
+  // Movement: arrow keys (turn-and-walk; PrBoom's classic key layout).
+  bindHold('tc-up',    'ArrowUp',    'ArrowUp',    38);
+  bindHold('tc-down',  'ArrowDown',  'ArrowDown',  40);
+  bindHold('tc-left',  'ArrowLeft',  'ArrowLeft',  37);
+  bindHold('tc-right', 'ArrowRight', 'ArrowRight', 39);
+
+  // Fire: held Ctrl works for chain-fire on the chaingun + plasma.
+  bindHold('tc-fire',  'Control', 'ControlLeft', 17);
+
+  // Use/Open: Space. Doubles as menu-confirm in PrBoom (Space and
+  // Enter both confirm), so this button works in-game AND in menus.
+  bindHold('tc-use',   ' ', 'Space', 32);
+
+  // Menu: tap Esc.
+  bindTap('tc-menu', function () { return { keyName: 'Escape', code: 'Escape', keyCode: 27 }; });
+
+  // Weapon cycle: each tap fires the next number key 1-7. Vanilla DOOM
+  // shareware only has weapons 1-4 active in Episode 1 but pressing 5-7
+  // is harmless (no weapon → nothing changes), so the cycle stays clean.
+  let weaponIdx = 0;
+  const weaponDigits = ['1', '2', '3', '4', '5', '6', '7'];
+  bindTap('tc-weap', function () {
+    const d = weaponDigits[weaponIdx];
+    weaponIdx = (weaponIdx + 1) % weaponDigits.length;
+    return { keyName: d, code: 'Digit' + d, keyCode: 48 + parseInt(d, 10) };
+  });
+
+  // Disable double-tap-to-zoom and pinch-zoom so quick taps register as
+  // game input, not browser gestures. iOS Safari respects these.
+  document.addEventListener('gesturestart',  e => e.preventDefault());
+  document.addEventListener('gesturechange', e => e.preventDefault());
+})();
 </script>

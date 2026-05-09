@@ -37,7 +37,11 @@ else
   # .init.lua is baked into redbean.com's appended zip by build-usb.sh —
   # no per-launch staging needed. cd $ROOT so saves.db lands at
   # ai-kit/redbean/saves.db (relative to redbean's CWD).
-  ( cd "$ROOT" && "$REDBEAN" -p "$PORT" -D "$ROOT" -L "$LOG" > "$LOG" 2>&1 ) &
+  # -D points at an empty webroot subdir to keep redbean off the on-disk
+  # /doom/ tree (which would 403 due to exFAT mode-0600/0700 stripping by
+  # Cosmopolitan). .init.lua + doom/* live in the appended zip.
+  mkdir -p "$ROOT/ai-kit/redbean/webroot"
+  ( cd "$ROOT" && "$REDBEAN" -p "$PORT" -D "$ROOT/ai-kit/redbean/webroot" -L "$LOG" > "$LOG" 2>&1 ) &
   RPID=$!
 
   echo "  Loading redbean..."
@@ -55,7 +59,7 @@ else
   done
 fi
 
-URL="http://127.0.0.1:$PORT/doom/"
+URL="http://127.0.0.1:$PORT/doom/index.html"
 echo "  Server up. Opening browser at $URL ..."
 open "$URL" 2>/dev/null || true
 

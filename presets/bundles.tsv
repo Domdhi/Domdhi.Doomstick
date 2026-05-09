@@ -3,8 +3,9 @@
 # (1-based; 0 = skip). 'custom' isn't here — it drops into per-knob prompts.
 #
 # Estimated sizes assume default ZIM (Simple EN ~395 MB), default OSM (Monaco
-# ~700 KB), default Whisper (base.en ~148 MB), default OCR (eng ~12 MB),
-# default TTS (sherpa+supertonic ~210 MB across 3 OS binaries + model).
+# ~700 KB), default Whisper (small.en ~497 MB — base.en was removed upstream
+# 2026-05-08), default OCR (eng ~12 MB), default TTS (sherpa+supertonic
+# ~210 MB across 3 OS binaries + model).
 #
 # Keep the 'full' row in lockstep with the bash apply_baked_defaults() function
 # and the PowerShell equivalent — bundle=full and -y must produce the same
@@ -22,5 +23,5 @@
 #
 # name	label	e4b	moe	emb	wiki	osm	whisper	ocr	docs	redbean	doom	tts	zim_idx	osm_idx	whisper_idx	estimated_bytes	summary
 tiny	~5.4 GB — E4B + Simple Wikipedia, no maps or voice	1	0	0	1	0	0	0	0	0	0	0	1	0	0	5400000000	E4B + Simple Wikipedia. Smallest useful kit.
-balanced	~6.1 GB — E4B + Embed + Simple Wiki + Monaco maps + side-arms + redbean + DOOM + TTS	1	0	1	1	1	1	1	1	1	1	1	1	1	2	6122000000	E4B + Embedding + Simple Wikipedia + Monaco placeholder maps + all side-arms + redbean + DOOM + TTS. Sensible default for a fresh USB.
-full	~22.9 GB — Everything (E4B + 26B + Embed + side-arms + redbean + DOOM + TTS)	1	1	1	1	1	1	1	1	1	1	1	1	1	2	22922000000	All three models + all side-arms + redbean + DOOM + TTS. Matches today's --non-interactive defaults.
+balanced	~6.5 GB — E4B + Embed + Simple Wiki + Monaco maps + side-arms + redbean + DOOM + TTS	1	0	1	1	1	1	1	1	1	1	1	1	1	2	6471000000	E4B + Embedding + Simple Wikipedia + Monaco placeholder maps + all side-arms + redbean + DOOM + TTS. Sensible default for a fresh USB.
+full	~23.3 GB — Everything (E4B + 26B + Embed + side-arms + redbean + DOOM + TTS)	1	1	1	1	1	1	1	1	1	1	1	1	1	2	23271000000	All three models + all side-arms + redbean + DOOM + TTS. Matches today's --non-interactive defaults.
