@@ -12,6 +12,83 @@ Format based on [Keep a Changelog](https://keepachangelog.com/).
 
 ---
 
+## [0.11.0] — 2026-05-10
+
+*Two new per-OS native side arms — KeePassXC password manager (GPL-2.0+) and static ffmpeg media toolkit (GPL-3.0+) — extending the kit's "fetched-only, per-OS native binary" pattern.*
+
+### Added
+
+- **KeePassXC 2.7.12 password manager** (~250 MB cross-OS, GPL-2.0+).
+  Per-OS GUI binaries fetched from
+  https://github.com/keepassxreboot/keepassxc/releases/tag/2.7.12 and
+  staged at `ai-kit/keepassxc/{linux,mac,win}/`. Launcher
+  `start-passwords.{sh,command,bat}` opens KeePassXC against
+  `passwords/vault.kdbx` on the USB root.
+  - macOS dmg deferred extraction (launcher does `hdiutil attach` +
+    `xattr -dr com.apple.quarantine` on first run).
+  - Linux AppImage extracted in-place at build time on Linux/WSL hosts;
+    raw AppImage shipped on Windows-built USBs with launcher first-run
+    fallback.
+  - Windows portable mode via `keepassxc.ini` (`PortableMode=true`)
+    next to `KeePassXC.exe`.
+  - User docs: `passwords/README.txt` + `docs/keepassxc-guide.md`.
+- **Static ffmpeg n7.1 media toolkit** (~210 MB cross-OS, GPL-3.0+).
+  Per-OS native binaries at `ai-kit/ffmpeg/{linux,mac,win}/`. Launcher
+  `start-ffmpeg.{sh,command,bat}` is the kit's first **PATH-primer
+  shell launcher** — banner + `exec $SHELL` on Unix, `cmd /k` on Windows.
+  - Linux x64 + arm64 + Windows x64: BtbN/FFmpeg-Builds gpl variant
+    (https://github.com/BtbN/FFmpeg-Builds).
+  - macOS arm64: Martin-Riedl GPL build
+    (https://ffmpeg.martin-riedl.de/), snapshot pin
+    `1777624525_N-124279-g0f6ba39122`.
+  - Codec coverage (BtbN gpl): libx264, libx265, libvpx, libsvtav1,
+    libdav1d, libopus, libvorbis, libwebp, libtheora, libmp3lame, libaom.
+  - User docs: `docs/ffmpeg-guide.md` (audio extraction, whisperfile
+    resample, video trim, sd-img stitch examples).
+- **`licenses/` directory** with 4 boundary files: `keepassxc-NOTICE.md`,
+  `keepassxc-LICENSE-GPL-2.0`, `ffmpeg-NOTICE.md`,
+  `ffmpeg-LICENSE-GPL-3.0`. Build scripts copy them to
+  `ai-kit/<tool>/NOTICE.md` and `ai-kit/<tool>/LICENSE-GPL-X` at deploy
+  time.
+
+### Changed
+
+- **`presets/bundles.tsv` schema 19 → 21 columns** — new `passwords`
+  (col 14, 0-indexed) and `ffmpeg` (col 15) toggles between `img` and
+  `zim_idx`. Bundle decisions: `tiny` 0/0, `balanced` 1/0 (~6.75 GB),
+  `full` 1/1 (~29.1 GB).
+- **`build-usb.{sh,ps1}` wizard** prompts for KeePassXC + ffmpeg
+  toggles after the image-gen prompt.
+- **`dashboard/index.html`** gains §09 (Password Vault) + §10 (Media
+  Toolkit) desktop-only sections.
+- **`dashboard/README.txt` SIDE ARMS** + **`docs/usb-layout.md`** trees
+  + bundle table updated for new launchers, ai-kit subdirs, sizes.
+- **`docs/auxiliary-roadmap.md`** adds v0.11 ship section. The v0.9
+  vault row's KeePassXC deferral note amended with `(NOTE 2026-05-10:
+  cross-OS framing was wrong; KeePassXC ships per-OS binaries
+  identically to kiwix/age — see v0.11 entry below.)` to prevent future
+  deferrals from repeating the same mistake.
+
+### Notes
+
+- **Three GPL boundaries inside the kit, not one.** `doom/` (GPL-2.0,
+  in-repo), `ai-kit/keepassxc/` (GPL-2.0+, fetched-only), and
+  `ai-kit/ffmpeg/` (GPL-3.0+, fetched-only). The kit overall remains
+  Apache-2.0 outside these boundaries.
+- **Why GPL-3.0 for ffmpeg, not LGPL.** No LGPL static FFmpeg source
+  exists for macOS Apple Silicon: evermeet.cx is GPL Intel-only;
+  Martin-Riedl is GPL. Forcing LGPL means either no Mac arm64 support,
+  no h264/h265 encode on Mac, or an asymmetric per-OS license matrix.
+  Single GPL-3.0+ boundary mirroring `doom/`'s GPL-2.0 precedent.
+- **BtbN's `latest` tag is rolling within the n7.1 stable branch.**
+  Re-running `build-usb` on different days fetches different (but
+  same-branch) builds. Acceptable trade-off for security-patch
+  freshness; flag interface is stable across n7.1 patch builds.
+- **Windows verification: DEFERRED** at ship time. WSL-side static
+  checks 5/5 PASS. Re-verify scheduled for next Windows session.
+
+---
+
 ## [0.10.1] — 2026-05-10
 
 *Same-day doc-fix sweep — closes a build-script regression and two verification recipe issues surfaced during v0.10 verification.*

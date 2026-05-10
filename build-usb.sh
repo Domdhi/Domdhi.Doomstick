@@ -111,6 +111,8 @@ apply_baked_defaults() {
   DOOM_INCLUDE_DOOM=1
   DOOM_INCLUDE_TTS=1
   DOOM_INCLUDE_IMG=1
+  DOOM_INCLUDE_PASSWORDS=1
+  DOOM_INCLUDE_FFMPEG=1
 }
 
 # ---------------------------------------------------------------- TSV loader
@@ -294,10 +296,10 @@ apply_bundle() {
   done
   [ "$found" -ge 0 ] || { echo "error: unknown bundle '$name'" >&2; exit 2; }
   local row="${TSV_FIELDS[$found]}"
-  # Schema (post v0.10):
+  # Schema (v0.11, 21 columns):
   #   1 label  2 e4b  3 moe  4 emb  5 wiki  6 osm  7 whisper  8 ocr  9 docs
-  #   10 redbean  11 doom  12 tts  13 img  14 zim_idx  15 osm_idx  16 whisper_idx
-  #   17 est  18 summary
+  #   10 redbean  11 doom  12 tts  13 img  14 passwords  15 ffmpeg
+  #   16 zim_idx  17 osm_idx  18 whisper_idx  19 estimated_bytes  20 summary
   DOOM_INCLUDE_E4B="$(tsv_field "$row" 2)"
   DOOM_INCLUDE_MOE="$(tsv_field "$row" 3)"
   DOOM_INCLUDE_EMB="$(tsv_field "$row" 4)"
@@ -310,10 +312,12 @@ apply_bundle() {
   DOOM_INCLUDE_DOOM="$(tsv_field "$row" 11)"
   DOOM_INCLUDE_TTS="$(tsv_field "$row" 12)"
   DOOM_INCLUDE_IMG="$(tsv_field "$row" 13)"
+  DOOM_INCLUDE_PASSWORDS="$(tsv_field "$row" 14)"
+  DOOM_INCLUDE_FFMPEG="$(tsv_field "$row" 15)"
   local zim_idx osm_idx whisper_idx
-  zim_idx="$(tsv_field "$row" 14)"
-  osm_idx="$(tsv_field "$row" 15)"
-  whisper_idx="$(tsv_field "$row" 16)"
+  zim_idx="$(tsv_field "$row" 16)"
+  osm_idx="$(tsv_field "$row" 17)"
+  whisper_idx="$(tsv_field "$row" 18)"
 
   # Resolve indices into URL/FILE/BYTES via the per-thing TSVs.
   if [ "$DOOM_INCLUDE_WIKI" = "1" ] && [ "$zim_idx" -ge 1 ]; then
@@ -508,6 +512,20 @@ run_wizard() {
   else
     DOOM_INCLUDE_IMG=0
   fi
+
+  # 11. KeePassXC — cross-OS password manager (GPL-2.0+)
+  if prompt_yes_no "Include KeePassXC password manager (cross-OS, ~250 MB)?" "Y"; then
+    DOOM_INCLUDE_PASSWORDS=1
+  else
+    DOOM_INCLUDE_PASSWORDS=0
+  fi
+
+  # 12. ffmpeg — static cross-OS media swiss-army knife (GPL-3.0+)
+  if prompt_yes_no "Include static ffmpeg (cross-OS media swiss-army, ~210 MB)?" "Y"; then
+    DOOM_INCLUDE_FFMPEG=1
+  else
+    DOOM_INCLUDE_FFMPEG=0
+  fi
 }
 
 # ---------------------------------------------------------------- estimate / free space
@@ -530,8 +548,10 @@ estimate_total_bytes() {
   fi
   [ "${DOOM_INCLUDE_REDBEAN:-0}" = "1" ] && total=$((total + 5500000))    # redbean.com
   [ "${DOOM_INCLUDE_DOOM:-0}" = "1" ]    && total=$((total + 7500000))    # Dwasm bundle ~3.2 MB + DOOM1.WAD ~4.2 MB
-  [ "${DOOM_INCLUDE_TTS:-0}" = "1" ]     && total=$((total + 210000000))  # sherpa runtime (3× ~30 MB) + Supertonic int8 (~120 MB)
-  [ "${DOOM_INCLUDE_IMG:-0}" = "1" ]     && total=$((total + 2646469190)) # sd.cpp 3-OS (42 MB) + FLUX.2 klein 4B Q4_K_M (~2.6 GB)
+  [ "${DOOM_INCLUDE_TTS:-0}" = "1" ]       && total=$((total + 210000000))  # sherpa runtime (3× ~30 MB) + Supertonic int8 (~120 MB)
+  [ "${DOOM_INCLUDE_IMG:-0}" = "1" ]       && total=$((total + 2646469190)) # sd.cpp 3-OS (42 MB) + FLUX.2 klein 4B Q4_K_M (~2.6 GB)
+  [ "${DOOM_INCLUDE_PASSWORDS:-0}" = "1" ] && total=$((total + 250000000))  # KeePassXC 3-OS (~47 MB AppImage + ~36 MB dmg + ~35 MB zip + extracted)
+  [ "${DOOM_INCLUDE_FFMPEG:-0}" = "1" ]    && total=$((total + 210000000))  # ffmpeg 3-OS (~117 MB linux64 + ~28 MB mac + ~157 MB win)
   printf '%s' "$total"
 }
 
@@ -562,6 +582,8 @@ print_summary_and_confirm() {
   printf "  %-12s %s\n" "DOOM:"      "$( [ "${DOOM_INCLUDE_DOOM:-0}" = "1" ] && echo 'included (Dwasm + shareware WAD)' || echo '(skipped)')"
   printf "  %-12s %s\n" "TTS:"       "$( [ "${DOOM_INCLUDE_TTS:-0}" = "1" ] && echo 'included (Sherpa-ONNX + Supertonic int8)' || echo '(skipped)')"
   printf "  %-12s %s\n" "Img gen:"   "$( [ "${DOOM_INCLUDE_IMG:-0}" = "1" ] && echo 'included (sd.cpp + FLUX.2 klein 4B Q4_K_M)' || echo '(skipped)')"
+  printf "  %-12s %s\n" "Passwords:" "$( [ "${DOOM_INCLUDE_PASSWORDS:-0}" = "1" ] && echo 'included (KeePassXC password manager)' || echo '(skipped)')"
+  printf "  %-12s %s\n" "ffmpeg:"    "$( [ "${DOOM_INCLUDE_FFMPEG:-0}" = "1" ] && echo 'included (static ffmpeg, cross-OS media swiss-army)' || echo '(skipped)')"
   echo
   printf "  Estimated download: %s\n" "$(human_bytes "$needed")"
   if [ "$free" -gt 0 ]; then
@@ -618,6 +640,8 @@ DOOM_INCLUDE_REDBEAN=${DOOM_INCLUDE_REDBEAN:-0}
 DOOM_INCLUDE_DOOM=${DOOM_INCLUDE_DOOM:-0}
 DOOM_INCLUDE_TTS=${DOOM_INCLUDE_TTS:-0}
 DOOM_INCLUDE_IMG=${DOOM_INCLUDE_IMG:-0}
+DOOM_INCLUDE_PASSWORDS=${DOOM_INCLUDE_PASSWORDS:-0}
+DOOM_INCLUDE_FFMPEG=${DOOM_INCLUDE_FFMPEG:-0}
 EOF
   echo "  [save] wrote config: $path"
 }
@@ -680,6 +704,12 @@ mkdir -p \
   "$TARGET/ai-kit/sd-img/mac" \
   "$TARGET/ai-kit/sd-img/win" \
   "$TARGET/ai-kit/sd-img/models" \
+  "$TARGET/ai-kit/keepassxc/linux" \
+  "$TARGET/ai-kit/keepassxc/mac" \
+  "$TARGET/ai-kit/keepassxc/win" \
+  "$TARGET/ai-kit/ffmpeg/linux" \
+  "$TARGET/ai-kit/ffmpeg/mac" \
+  "$TARGET/ai-kit/ffmpeg/win" \
   "$TARGET/zim" \
   "$TARGET/maps" \
   "$TARGET/ocr/lib" \
@@ -1047,6 +1077,40 @@ IMG_VAE_URL="https://huggingface.co/black-forest-labs/FLUX.2-small-decoder/resol
 IMG_VAE_BYTES=249519092
 IMG_VAE_FILENAME="full_encoder_small_decoder.safetensors"
 
+# KeePassXC — cross-OS password manager, GPL-2.0+.
+# Linux: AppImage (self-contained, extract on-the-fly with --appimage-extract).
+# macOS: arm64 .dmg (deferred extraction — hdiutil runs at first launch, not
+#   at build time, because dmg mounting can't run on Linux/WSL).
+# Windows: Win64.zip (flattened with unzip -j); keepassxc.ini activates portable
+#   mode so KeePassXC stores its config/db next to the binary, not in %APPDATA%.
+KEEPASSXC_VERSION="2.7.12"
+KEEPASSXC_LINUX_FILENAME="KeePassXC-${KEEPASSXC_VERSION}-x86_64.AppImage"
+KEEPASSXC_LINUX_URL="https://github.com/keepassxreboot/keepassxc/releases/download/${KEEPASSXC_VERSION}/${KEEPASSXC_LINUX_FILENAME}"
+KEEPASSXC_LINUX_BYTES=49283072   # placeholder ~47 MB; pinned size for verify_size
+KEEPASSXC_MAC_FILENAME="KeePassXC-${KEEPASSXC_VERSION}-arm64.dmg"
+KEEPASSXC_MAC_URL="https://github.com/keepassxreboot/keepassxc/releases/download/${KEEPASSXC_VERSION}/${KEEPASSXC_MAC_FILENAME}"
+KEEPASSXC_MAC_BYTES=37748736     # ~36 MB
+KEEPASSXC_WIN_FILENAME="KeePassXC-${KEEPASSXC_VERSION}-Win64.zip"
+KEEPASSXC_WIN_URL="https://github.com/keepassxreboot/keepassxc/releases/download/${KEEPASSXC_VERSION}/${KEEPASSXC_WIN_FILENAME}"
+KEEPASSXC_WIN_BYTES=36700160     # ~35 MB
+
+# ffmpeg — GPL-3.0+. BtbN builds for Linux/Windows; Martin-Riedl for macOS arm64.
+#
+# NOTE: BtbN's "latest" tag is rolling for the n7.1 stable branch — re-running
+# build-usb on different days may fetch different patch builds. The n7.1 major
+# version is pinned; only the specific commit within that release line can vary.
+# Trade-off: always-current security patches without the pain of manual version
+# bumps. Pin to a specific commit tag only if reproducible builds matter.
+FFMPEG_VERSION="n7.1"
+FFMPEG_LINUX64_URL="https://github.com/BtbN/FFmpeg-Builds/releases/download/latest/ffmpeg-${FFMPEG_VERSION}-latest-linux64-gpl-7.1.tar.xz"
+FFMPEG_LINUX64_BYTES=122683392   # ~117 MB
+FFMPEG_LINUXARM64_URL="https://github.com/BtbN/FFmpeg-Builds/releases/download/latest/ffmpeg-${FFMPEG_VERSION}-latest-linuxarm64-gpl-7.1.tar.xz"
+FFMPEG_LINUXARM64_BYTES=104857600  # ~100 MB
+FFMPEG_MAC_URL="https://ffmpeg.martin-riedl.de/download/macos/arm64/1777624525_N-124279-g0f6ba39122/ffmpeg.zip"
+FFMPEG_MAC_BYTES=28950528         # ~27.6 MB live-verified
+FFMPEG_WIN_URL="https://github.com/BtbN/FFmpeg-Builds/releases/download/latest/ffmpeg-${FFMPEG_VERSION}-latest-win64-gpl-7.1.zip"
+FFMPEG_WIN_BYTES=164626432        # ~157 MB
+
 if [ "${DOOM_INCLUDE_IMG:-0}" = "1" ]; then
   echo
   echo "==> image gen (sd.cpp ${IMG_VERSION} + FLUX.2 klein)"
@@ -1166,6 +1230,164 @@ if [ "${DOOM_INCLUDE_VAULT:-1}" = "1" ]; then
   [ -f "$REPO/vault/README.txt" ] && cp "$REPO/vault/README.txt" "$TARGET/vault/README.txt"
 fi
 
+# ---------------------------------------------------------------- KeePassXC (passwords)
+
+# KeePassXC — cross-OS password manager, GPL-2.0+. v0.11.
+# Linux: extract AppImage to binary + share/; macOS: ship raw .dmg (launcher
+# does hdiutil at first run); Windows: flatten zip + write portable-mode .ini.
+# Guard on -f (not -x): exFAT strips execute bits, -x would always re-fetch.
+if [ "${DOOM_INCLUDE_PASSWORDS:-0}" = "1" ]; then
+  echo
+  echo "==> passwords (KeePassXC ${KEEPASSXC_VERSION})"
+
+  # Linux — fetch AppImage, extract it, move binary + share/ into place.
+  # Extraction creates squashfs-root/; we pull the binary and share/ out of it
+  # and drop the AppImage + squashfs-root afterwards.
+  if [ ! -f "$TARGET/ai-kit/keepassxc/linux/keepassxc" ]; then
+    KEEPASSXC_LINUX_APPIMAGE="/tmp/${KEEPASSXC_LINUX_FILENAME}"
+    fetch "$KEEPASSXC_LINUX_URL" "$KEEPASSXC_LINUX_APPIMAGE" "$KEEPASSXC_LINUX_BYTES" "KeePassXC ${KEEPASSXC_VERSION} linux-x86_64 AppImage"
+    chmod +x "$KEEPASSXC_LINUX_APPIMAGE"
+    ( cd /tmp && ./"${KEEPASSXC_LINUX_FILENAME}" --appimage-extract >/dev/null 2>&1 )
+    mv /tmp/squashfs-root/usr/bin/keepassxc "$TARGET/ai-kit/keepassxc/linux/keepassxc"
+    if [ -d /tmp/squashfs-root/usr/share ]; then
+      cp -r /tmp/squashfs-root/usr/share "$TARGET/ai-kit/keepassxc/linux/share"
+    fi
+    rm -f "$KEEPASSXC_LINUX_APPIMAGE"
+    rm -rf /tmp/squashfs-root
+    chmod +x "$TARGET/ai-kit/keepassxc/linux/keepassxc" 2>/dev/null || true
+  else
+    echo "  [skip] KeePassXC linux binary already present"
+  fi
+
+  # macOS — ship raw .dmg; extraction deferred to launcher (hdiutil can't run
+  # on Linux/WSL). The start-passwords.command launcher does hdiutil attach
+  # at first run and copies KeePassXC.app out.
+  if [ ! -f "$TARGET/ai-kit/keepassxc/mac/${KEEPASSXC_MAC_FILENAME}" ]; then
+    fetch "$KEEPASSXC_MAC_URL" "$TARGET/ai-kit/keepassxc/mac/${KEEPASSXC_MAC_FILENAME}" "$KEEPASSXC_MAC_BYTES" "KeePassXC ${KEEPASSXC_VERSION} macOS arm64 dmg"
+  else
+    echo "  [skip] KeePassXC mac dmg already present"
+  fi
+
+  # Windows — flatten zip into ai-kit/keepassxc/win/, then write portable .ini.
+  # keepassxc.ini with PortableMode=true tells KeePassXC to store config and
+  # databases next to the binary instead of %APPDATA% (portable USB usage).
+  if [ ! -f "$TARGET/ai-kit/keepassxc/win/KeePassXC.exe" ]; then
+    KEEPASSXC_WIN_ZIP="/tmp/${KEEPASSXC_WIN_FILENAME}"
+    fetch "$KEEPASSXC_WIN_URL" "$KEEPASSXC_WIN_ZIP" "$KEEPASSXC_WIN_BYTES" "KeePassXC ${KEEPASSXC_VERSION} Win64 zip"
+    if command -v unzip >/dev/null 2>&1; then
+      unzip -o -j "$KEEPASSXC_WIN_ZIP" -d "$TARGET/ai-kit/keepassxc/win" >/dev/null
+      rm -f "$KEEPASSXC_WIN_ZIP"
+      # Write portable-mode config so KeePassXC stores data next to the binary.
+      # Only emit when extraction succeeded — a half-baked state (ini present,
+      # exe absent) would mislead the launcher's missing-binary guard.
+      cat >"$TARGET/ai-kit/keepassxc/win/keepassxc.ini" <<'KPXCINI'
+[General]
+PortableMode=true
+KPXCINI
+    else
+      echo "  [warn] unzip not available; leaving $KEEPASSXC_WIN_ZIP for manual extraction"
+    fi
+  else
+    echo "  [skip] KeePassXC windows binary already present"
+  fi
+fi
+
+# ---------------------------------------------------------------- ffmpeg
+
+# ffmpeg — GPL-3.0+. BtbN rolling-latest builds for Linux (x64 + arm64) and
+# Windows; Martin-Riedl static builds for macOS arm64. v0.11.
+# Guard on -f (not -x): exFAT strips execute bits.
+if [ "${DOOM_INCLUDE_FFMPEG:-0}" = "1" ]; then
+  echo
+  echo "==> ffmpeg (${FFMPEG_VERSION})"
+
+  # Linux — architecture-detected; DOOM_FFMPEG_LINUX_ARCH overrides (default x64).
+  # Only one variant is fetched per build host. tar.xz (capital J for xz).
+  # Archive nests under ffmpeg-<ver>-latest-<arch>-gpl-7.1/ so --strip-components=1
+  # lands bin/ and doc/ directly; we then move bin/ffmpeg + bin/ffprobe into place.
+  if [ ! -f "$TARGET/ai-kit/ffmpeg/linux/ffmpeg" ]; then
+    _ffmpeg_arch="${DOOM_FFMPEG_LINUX_ARCH:-}"
+    if [ -z "$_ffmpeg_arch" ]; then
+      case "$(uname -m)" in
+        aarch64) _ffmpeg_arch="linuxarm64" ;;
+        *)       _ffmpeg_arch="linux64" ;;
+      esac
+    fi
+    if [ "$_ffmpeg_arch" = "linuxarm64" ]; then
+      _ffmpeg_linux_url="$FFMPEG_LINUXARM64_URL"
+      _ffmpeg_linux_bytes="$FFMPEG_LINUXARM64_BYTES"
+      _ffmpeg_linux_label="ffmpeg ${FFMPEG_VERSION} linux-arm64"
+    else
+      _ffmpeg_linux_url="$FFMPEG_LINUX64_URL"
+      _ffmpeg_linux_bytes="$FFMPEG_LINUX64_BYTES"
+      _ffmpeg_linux_label="ffmpeg ${FFMPEG_VERSION} linux-x64"
+    fi
+    FFMPEG_LINUX_TAR="/tmp/ffmpeg-linux.tar.xz"
+    fetch "$_ffmpeg_linux_url" "$FFMPEG_LINUX_TAR" "$_ffmpeg_linux_bytes" "$_ffmpeg_linux_label"
+    FFMPEG_LINUX_STAGE="/tmp/ffmpeg-linux-stage"
+    mkdir -p "$FFMPEG_LINUX_STAGE"
+    tar -xJf "$FFMPEG_LINUX_TAR" --strip-components=1 -C "$FFMPEG_LINUX_STAGE"
+    mv "$FFMPEG_LINUX_STAGE/bin/ffmpeg"  "$TARGET/ai-kit/ffmpeg/linux/ffmpeg"
+    mv "$FFMPEG_LINUX_STAGE/bin/ffprobe" "$TARGET/ai-kit/ffmpeg/linux/ffprobe"
+    rm -f "$FFMPEG_LINUX_TAR"
+    rm -rf "$FFMPEG_LINUX_STAGE"
+    chmod +x "$TARGET/ai-kit/ffmpeg/linux/ffmpeg" "$TARGET/ai-kit/ffmpeg/linux/ffprobe" 2>/dev/null || true
+  else
+    echo "  [skip] ffmpeg linux binary already present"
+  fi
+
+  # macOS — Martin-Riedl arm64 static build. zip contains ffmpeg + ffprobe at root.
+  if [ ! -f "$TARGET/ai-kit/ffmpeg/mac/ffmpeg" ]; then
+    FFMPEG_MAC_ZIP="/tmp/ffmpeg-mac.zip"
+    fetch "$FFMPEG_MAC_URL" "$FFMPEG_MAC_ZIP" "$FFMPEG_MAC_BYTES" "ffmpeg ${FFMPEG_VERSION} macOS arm64 (Martin-Riedl)"
+    if command -v unzip >/dev/null 2>&1; then
+      unzip -o "$FFMPEG_MAC_ZIP" -d "$TARGET/ai-kit/ffmpeg/mac" >/dev/null
+      rm -f "$FFMPEG_MAC_ZIP"
+      chmod +x "$TARGET/ai-kit/ffmpeg/mac/ffmpeg" "$TARGET/ai-kit/ffmpeg/mac/ffprobe" 2>/dev/null || true
+    else
+      echo "  [warn] unzip not available; leaving $FFMPEG_MAC_ZIP for manual extraction"
+    fi
+  else
+    echo "  [skip] ffmpeg mac binary already present"
+  fi
+
+  # Windows — BtbN win64-gpl build. zip nests under ffmpeg-<ver>-latest-win64-gpl-7.1/
+  # so unzip -j flattens bin/ffmpeg.exe + bin/ffprobe.exe + bin/*.dll into ai-kit/ffmpeg/win/.
+  if [ ! -f "$TARGET/ai-kit/ffmpeg/win/ffmpeg.exe" ]; then
+    FFMPEG_WIN_ZIP="/tmp/ffmpeg-win.zip"
+    fetch "$FFMPEG_WIN_URL" "$FFMPEG_WIN_ZIP" "$FFMPEG_WIN_BYTES" "ffmpeg ${FFMPEG_VERSION} win64-gpl (BtbN)"
+    if command -v unzip >/dev/null 2>&1; then
+      unzip -o -j "$FFMPEG_WIN_ZIP" -d "$TARGET/ai-kit/ffmpeg/win" >/dev/null
+      rm -f "$FFMPEG_WIN_ZIP"
+    else
+      echo "  [warn] unzip not available; leaving $FFMPEG_WIN_ZIP for manual extraction"
+    fi
+  else
+    echo "  [skip] ffmpeg windows binary already present"
+  fi
+fi
+
+# ---------------------------------------------------------------- license copies (v0.11 GPL side-arms)
+
+if [ "${DOOM_INCLUDE_PASSWORDS:-0}" = "1" ]; then
+  cp "$REPO/licenses/keepassxc-NOTICE.md"       "$TARGET/ai-kit/keepassxc/NOTICE.md"
+  cp "$REPO/licenses/keepassxc-LICENSE-GPL-2.0" "$TARGET/ai-kit/keepassxc/LICENSE-GPL-2.0"
+fi
+
+if [ "${DOOM_INCLUDE_FFMPEG:-0}" = "1" ]; then
+  cp "$REPO/licenses/ffmpeg-NOTICE.md"       "$TARGET/ai-kit/ffmpeg/NOTICE.md"
+  cp "$REPO/licenses/ffmpeg-LICENSE-GPL-3.0" "$TARGET/ai-kit/ffmpeg/LICENSE-GPL-3.0"
+fi
+
+# ---------------------------------------------------------------- passwords/ skeleton
+
+# passwords/ landing zone — README tells user how to create their first .kdbx.
+# Recovery.kdbx is user-created at runtime, not shipped. Mirror the vault/
+# skeleton pattern: guard the copy with [ -f ] so re-runs are a no-op when the
+# source README doesn't exist yet (V11-7 wave, coming after launchers).
+mkdir -p "$TARGET/passwords"
+[ -f "$REPO/passwords/README.txt" ] && cp "$REPO/passwords/README.txt" "$TARGET/passwords/README.txt" || true
+
 # ---------------------------------------------------------------- launchers + dashboard
 
 echo
@@ -1177,7 +1399,7 @@ cp "$REPO/launchers/start.sh"      "$TARGET/start.sh"
 
 # Side-arm launchers — copied unconditionally so the USB layout is consistent;
 # launchers themselves print a clear error if the underlying data isn't present.
-for tool in whisper wiki ocr docs doom embed vault img; do
+for tool in whisper wiki ocr docs doom embed vault img passwords ffmpeg; do
   cp "$REPO/launchers/start-$tool.bat"     "$TARGET/start-$tool.bat"
   cp "$REPO/launchers/start-$tool.command" "$TARGET/start-$tool.command"
   cp "$REPO/launchers/start-$tool.sh"      "$TARGET/start-$tool.sh"

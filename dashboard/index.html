@@ -1466,6 +1466,98 @@ body.mobile-mode .terminal-action { padding: 14px 22px; }
   </div>
 </section>
 
+<!-- ============== §09 KEEPASSXC PASSWORD VAULT (DESKTOP) ============== -->
+
+<section class="desktop-only">
+  <h2 class="section-title"><span class="num">§09</span>Password Vault</h2>
+  <p class="section-lede">
+    KeePassXC stores every credential in an AES-256-encrypted database file —
+    one file, zero cloud, works on any OS. The launcher opens it directly so
+    you're one click away from your logins anywhere the stick runs.
+    <strong>First use: create your database with KeePassXC's wizard. Day-to-day: the launcher auto-opens it if present.</strong>
+  </p>
+
+  <div class="grid grid-2">
+
+    <article class="terminal">
+      <span class="terminal-tag">▸ PWD·OPEN</span>
+      <h3 class="terminal-name">Password Vault Launcher</h3>
+      <p class="terminal-desc">
+        <code>start-passwords.bat</code> / <code>.command</code> / <code>.sh</code> launches
+        KeePassXC from <code>ai-kit/keepassxc/</code> and, if
+        <code>passwords/vault.kdbx</code> exists, opens it automatically.
+        No port, no server — KeePassXC runs as a native GUI process and exits
+        cleanly when you close it. GPL-2.0+ license boundary at
+        <code>ai-kit/keepassxc/</code>.
+      </p>
+      <code class="terminal-cmd" data-cmd-for="start-passwords.bat">start-passwords.bat</code>
+      <button class="terminal-action" type="button" data-copy-path="passwords/">Copy Path</button>
+    </article>
+
+    <article class="terminal">
+      <span class="terminal-tag">▸ PWD·SETUP</span>
+      <h3 class="terminal-name">First-Use Ceremony</h3>
+      <p class="terminal-desc">
+        No database yet? Run the launcher, then in KeePassXC choose
+        <em>Database → New Database</em> and save to <code>passwords/vault.kdbx</code>
+        on the USB root — that path is where the launcher looks on every subsequent
+        launch. To use the same vault on multiple machines: plug in the stick,
+        run the launcher, done. The file travels with the hardware.
+        Back it up like your keys — losing the master passphrase loses the vault.
+      </p>
+      <a class="terminal-action" href="passwords/" target="_blank" rel="noopener">Open Folder</a>
+    </article>
+
+  </div>
+</section>
+
+<!-- ============== §10 MEDIA TOOLKIT (DESKTOP) ============== -->
+
+<section class="desktop-only">
+  <h2 class="section-title"><span class="num">§10</span>Media Toolkit</h2>
+  <p class="section-lede">
+    ffmpeg and ffprobe ship at <code>ai-kit/ffmpeg/</code> — no install, no PATH
+    friction. The launcher drops you into a shell with both tools already on PATH
+    so you can convert, extract, and probe media files from the stick without
+    touching the host system.
+    <strong>GPL-3.0+ licensed. All processing is local — no network calls.</strong>
+  </p>
+
+  <div class="grid grid-2">
+
+    <article class="terminal">
+      <span class="terminal-tag">▸ MEDIA·SHELL</span>
+      <h3 class="terminal-name">Media Toolkit Launcher</h3>
+      <p class="terminal-desc">
+        <code>start-ffmpeg.bat</code> / <code>.command</code> / <code>.sh</code>
+        primes <code>PATH</code> with <code>ai-kit/ffmpeg/&lt;os&gt;/</code> and
+        opens an interactive shell. Type any <code>ffmpeg</code> or <code>ffprobe</code>
+        command directly — no prefix needed. Close the shell window when done.
+        Runtime lives at <code>ai-kit/ffmpeg/</code> (GPL-3.0+ boundary).
+      </p>
+      <code class="terminal-cmd" data-cmd-for="start-ffmpeg.bat">start-ffmpeg.bat</code>
+      <button class="terminal-action" type="button" data-copy-path="ai-kit/ffmpeg/">Copy Path</button>
+    </article>
+
+    <article class="terminal">
+      <span class="terminal-tag">▸ MEDIA·RECIPES</span>
+      <h3 class="terminal-name">Common Invocations</h3>
+      <p class="terminal-desc">
+        Extract audio from video for offline listening or transcription:
+        <code>ffmpeg -i input.mp4 output.wav</code>.
+        Convert to Whisperfile-compatible format (16 kHz mono):
+        <code>ffmpeg -i input.wav -ar 16000 -ac 1 out.wav</code>.
+        Inspect any media file without converting:
+        <code>ffprobe input.mp4</code>.
+        Stitch sd-img frames into a timelapse:
+        <code>ffmpeg -framerate 1 -pattern_type glob -i 'img-out-*.png' -c:v libx264 out.mp4</code>.
+      </p>
+      <a class="terminal-action" href="https://ffmpeg.org/ffmpeg.html" target="_blank" rel="noopener">ffmpeg Docs</a>
+    </article>
+
+  </div>
+</section>
+
 <!-- ============== §06m MOBILE FIELD NOTES ============== -->
 
 <section class="mobile-only">

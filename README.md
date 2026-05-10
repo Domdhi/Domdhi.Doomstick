@@ -181,7 +181,6 @@ This is a recipe — large binary artifacts (model weights, ISOs) live upstream 
 - Bootable rescue ISOs (Ubuntu / SystemRescue / Hiren's BootCD PE) + [Ventoy](https://www.ventoy.net/)
 - Portable Windows tools (PortableGit, VS Code Portable, ripgrep, fzf, jq, 7-Zip)
 - Piper TTS (text → audio, completes the voice stack with whisperfile)
-- ffmpeg (media swiss-army knife), …
 
 These and more are tracked in [`docs/auxiliary-roadmap.md`](docs/auxiliary-roadmap.md) — most are one-line additions to the build script when you feel like it.
 
@@ -473,13 +472,14 @@ Twelve tools shipped from v0.4 through v0.10 — see [`docs/auxiliary-roadmap.md
 | ✅ | **EmbeddingGemma RAG + chat tab + journal** (v0.8) | shared with EmbedGemma + ~3.5 MB Hollama vendor | Vector index over `workspace/<name>/docs/` via redbean's `/rag/ingest` + `/rag/query` endpoints. Pure-Lua cosine over `embedding BLOB` columns (FTS5 isn't available in redbean's bundled lsqlite3 — see architecture doc for the pivot rationale). Vendored Hollama 0.35.4 chat tab at `chat/index.html` with five `_extras-*.js` adapters (`#filename` autocomplete, workspace dropdown, server-backed session persistence via `/chat/save`, three-server provider seed, daily-journal sidebar via `/journal/append`). Embedding side-arm `start-embed.*` boots EmbeddingGemma-300M on port 8769 on demand. Full design: [`docs/research/rag-architecture-2026-05-09.md`](docs/research/rag-architecture-2026-05-09.md). |
 | ✅ | **age-encrypted recovery vault** (v0.9) | ~25 MB | Per-OS `age` v1.3.1 binaries at `ai-kit/age/{linux,mac,win}/`. `vault/recovery.tar.age` is the encrypted blob (user-created). Default ceremony: `tar c recovery/ \| age -p > vault/recovery.tar.age`. Launcher `start-vault.*` decrypts to host tmpdir (preserves POSIX 0600 on SSH keys). Air-gapped from redbean — no HTTP route. BSD-3, native Go binary, no APE polyglot, no Defender FP. Full guide: [`docs/vault-guide.md`](docs/vault-guide.md). |
 | ✅ | **offline image generation** (v0.10) | ~5.0 GB | Per-OS `sd-cli` (stable-diffusion.cpp `master-596-90e87bc`) at `ai-kit/sd-img/{linux,mac,win}/` + FLUX.2 klein 4B Q4\_K\_M transformer GGUF (~2.43 GB) + small-decoder VAE safetensors (~238 MB) at `ai-kit/sd-img/models/` + Qwen3-4B Q4\_K\_M text encoder (~2.33 GB, doubles as AI core option) at `ai-kit/models/`. All Apache-2.0. Launcher `start-img.*` reads a prompt, writes a 1024×1024 PNG to the USB root. Standalone — no redbean coupling, no port. ~1-3 min per image on CPU; needs ~8-10 GB working RAM. Full guide: [`docs/img-guide.md`](docs/img-guide.md). |
+| ✅ | **KeePassXC password manager** (v0.11) | ~250 MB cross-OS | Per-OS KeePassXC 2.7.12 GUI binaries at `ai-kit/keepassxc/{linux,mac,win}/`. Launcher `start-passwords.*` opens the GUI directly against `passwords/vault.kdbx` on the USB. GPL-2.0+. Bundles: balanced + full. Full guide: [`docs/keepassxc-guide.md`](docs/keepassxc-guide.md). |
+| ✅ | **ffmpeg media toolkit** (v0.11) | ~210 MB cross-OS | Static ffmpeg n7.1 per-OS at `ai-kit/ffmpeg/{linux,mac,win}/`. Launcher `start-ffmpeg.*` primes PATH so `ffmpeg` resolves for the session. GPL-3.0+. Pairs with whisperfile for live captions and `sd-img` for animated outputs. Bundle: full-only. Full guide: [`docs/ffmpeg-guide.md`](docs/ffmpeg-guide.md). |
 
 **Still pending** (ranked by payoff):
 
 | ⭐ | Item | Size | What it adds |
 |---|------|------|-------------|
 | 🥉 | **Project Gutenberg subset + Calibre Portable** | ~3 GB | Offline classic books. |
-| 🥉 | **Static ffmpeg** | ~80 MB | Media swiss-army knife; pairs with whisperfile for live captions. |
 | 🥉 | **Bigger Wikipedia ZIMs** | up to ~50 GB | `wikipedia_en_top_nopic` (~6 GB) is the sweet spot. |
 
 PRs welcome.

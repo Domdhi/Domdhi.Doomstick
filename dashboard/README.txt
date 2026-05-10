@@ -209,6 +209,21 @@ SIDE ARMS (shipped with the kit)
                                     text encoder + VAE all together).
                                     See docs/img-guide.md.
 
+  start-passwords.{bat,command,sh}  KeePassXC GUI password manager.
+                                    Opens your vault.kdbx in
+                                    passwords/ (create it on first
+                                    run). Native per-OS binaries,
+                                    no network. GPL-2.0+. ~250 MB
+                                    cross-OS.
+
+  start-ffmpeg.{bat,command,sh}     Sets PATH to ai-kit/ffmpeg/<os>/
+                                    then drops into a shell with
+                                    ffmpeg + ffprobe available. Pairs
+                                    with start-whisper (pre-process
+                                    audio) and start-img (post-process
+                                    frames). No port, no server.
+                                    GPL-3.0+. ~210 MB cross-OS.
+
   chat\index.html                   Vendored Hollama 0.35.4 chat UI with
                                     workspace/RAG/journal/session adapters.
                                     Open as a file:// in any modern

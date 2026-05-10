@@ -120,6 +120,8 @@ function Apply-BakedDefaults {
     $script:DoomIncludeDoom     = 1
     $script:DoomIncludeTts      = 1
     $script:DoomIncludeImg      = 1
+    $script:DoomIncludePasswords = 1
+    $script:DoomIncludeFfmpeg   = 1
 }
 
 # ---------------------------------------------------------------- TSV loader
@@ -219,25 +221,27 @@ function Apply-Bundle {
     $rows = Import-Tsv (Join-Path $Presets 'bundles.tsv')
     $row = $rows | Where-Object { $_[0] -eq $Name } | Select-Object -First 1
     if (-not $row) { Write-Error "Unknown bundle: $Name"; exit 2 }
-    # Schema (post v0.10):
+    # Schema (v0.11, 21 columns):
     #   0 name  1 label  2 e4b  3 moe  4 emb  5 wiki  6 osm  7 whisper  8 ocr  9 docs
-    #   10 redbean  11 doom  12 tts  13 img  14 zim_idx  15 osm_idx  16 whisper_idx
-    #   17 est  18 summary
-    $script:DoomIncludeE4b     = [int]$row[2]
-    $script:DoomIncludeMoe     = [int]$row[3]
-    $script:DoomIncludeEmb     = [int]$row[4]
-    $script:DoomIncludeWiki    = [int]$row[5]
-    $script:DoomIncludeOsm     = [int]$row[6]
-    $script:DoomIncludeWhisper = [int]$row[7]
-    $script:DoomIncludeOcr     = [int]$row[8]
-    $script:DoomIncludeDocs    = [int]$row[9]
-    $script:DoomIncludeRedbean = [int]$row[10]
-    $script:DoomIncludeDoom    = [int]$row[11]
-    $script:DoomIncludeTts     = [int]$row[12]
-    $script:DoomIncludeImg     = [int]$row[13]
-    $zimIdx     = [int]$row[14]
-    $osmIdx     = [int]$row[15]
-    $whisperIdx = [int]$row[16]
+    #   10 redbean  11 doom  12 tts  13 img  14 passwords  15 ffmpeg
+    #   16 zim_idx  17 osm_idx  18 whisper_idx  19 estimated_bytes  20 summary
+    $script:DoomIncludeE4b       = [int]$row[2]
+    $script:DoomIncludeMoe       = [int]$row[3]
+    $script:DoomIncludeEmb       = [int]$row[4]
+    $script:DoomIncludeWiki      = [int]$row[5]
+    $script:DoomIncludeOsm       = [int]$row[6]
+    $script:DoomIncludeWhisper   = [int]$row[7]
+    $script:DoomIncludeOcr       = [int]$row[8]
+    $script:DoomIncludeDocs      = [int]$row[9]
+    $script:DoomIncludeRedbean   = [int]$row[10]
+    $script:DoomIncludeDoom      = [int]$row[11]
+    $script:DoomIncludeTts       = [int]$row[12]
+    $script:DoomIncludeImg       = [int]$row[13]
+    $script:DoomIncludePasswords = [int]$row[14]
+    $script:DoomIncludeFfmpeg    = [int]$row[15]
+    $zimIdx     = [int]$row[16]
+    $osmIdx     = [int]$row[17]
+    $whisperIdx = [int]$row[18]
 
     if ($DoomIncludeWiki -eq 1 -and $zimIdx -ge 1) {
         $z = (Import-Tsv (Join-Path $Presets 'zim.tsv'))[$zimIdx-1]
@@ -404,6 +408,20 @@ function Invoke-Wizard {
     } else {
         $script:DoomIncludeImg = 0
     }
+
+    # 11. KeePassXC — cross-OS password manager (GPL-2.0+)
+    if (Read-YesNo 'Include KeePassXC password manager (cross-OS, ~250 MB)?' 'Y') {
+        $script:DoomIncludePasswords = 1
+    } else {
+        $script:DoomIncludePasswords = 0
+    }
+
+    # 12. ffmpeg — static cross-OS media swiss-army knife (GPL-3.0+)
+    if (Read-YesNo 'Include static ffmpeg (cross-OS media swiss-army, ~210 MB)?' 'Y') {
+        $script:DoomIncludeFfmpeg = 1
+    } else {
+        $script:DoomIncludeFfmpeg = 0
+    }
 }
 
 # ---------------------------------------------------------------- estimate / free space
@@ -425,6 +443,8 @@ function Get-EstimatedTotalBytes {
     if ($DoomIncludeDoom -eq 1)    { $total += 7500000 }   # Dwasm + DOOM1.WAD
     if ($DoomIncludeTts -eq 1)     { $total += 210000000 }  # sherpa runtime (3 OS) + Supertonic
     if ($DoomIncludeImg -eq 1)     { $total += 2646469190 } # sd.cpp 3-OS (~42 MB) + FLUX.2 klein 4B Q4_K_M (~2.6 GB)
+    if ($DoomIncludePasswords -eq 1) { $total += 250000000 } # KeePassXC 3-OS (~47 MB AppImage + ~36 MB dmg + ~35 MB zip + extracted)
+    if ($DoomIncludeFfmpeg    -eq 1) { $total += 210000000 } # ffmpeg 3-OS (~117 MB linux64 + ~28 MB mac + ~157 MB win)
     return $total
 }
 
@@ -458,6 +478,8 @@ function Show-SummaryAndConfirm {
     Write-Host ("  {0,-12} {1}" -f 'DOOM:',      $(if ($DoomIncludeDoom -eq 1) { 'included (Dwasm + shareware WAD)' } else { '(skipped)' }))
     Write-Host ("  {0,-12} {1}" -f 'TTS:',       $(if ($DoomIncludeTts -eq 1) { 'included (Sherpa-ONNX + Supertonic int8)' } else { '(skipped)' }))
     Write-Host ("  {0,-12} {1}" -f 'Img gen:',   $(if ($DoomIncludeImg -eq 1) { 'included (sd.cpp + FLUX.2 klein 4B Q4_K_M)' } else { '(skipped)' }))
+    Write-Host ("  {0,-12} {1}" -f 'Passwords:', $(if ($DoomIncludePasswords -eq 1) { 'included (KeePassXC password manager)' } else { '(skipped)' }))
+    Write-Host ("  {0,-12} {1}" -f 'ffmpeg:',    $(if ($DoomIncludeFfmpeg -eq 1) { 'included (static ffmpeg, cross-OS media swiss-army)' } else { '(skipped)' }))
     Write-Host ''
     Write-Host ("  Estimated download: {0}" -f (Format-Bytes $needed))
     if ($free -gt 0) {
@@ -511,10 +533,12 @@ function Write-Config {
 
 `$DoomIncludeDocs = $DoomIncludeDocs
 
-`$DoomIncludeRedbean = $DoomIncludeRedbean
-`$DoomIncludeDoom    = $DoomIncludeDoom
-`$DoomIncludeTts     = $DoomIncludeTts
-`$DoomIncludeImg     = $DoomIncludeImg
+`$DoomIncludeRedbean  = $DoomIncludeRedbean
+`$DoomIncludeDoom     = $DoomIncludeDoom
+`$DoomIncludeTts      = $DoomIncludeTts
+`$DoomIncludeImg      = $DoomIncludeImg
+`$DoomIncludePasswords = $DoomIncludePasswords
+`$DoomIncludeFfmpeg   = $DoomIncludeFfmpeg
 "@
     Set-Content -LiteralPath $Path -Value $content -NoNewline:$false
     Write-Host "  [save] wrote config: $Path"
@@ -577,6 +601,12 @@ $SdImgModelDir = Join-Path $Target 'ai-kit\sd-img\models'
 $AgeLinDir     = Join-Path $Target 'ai-kit\age\linux'
 $AgeMacDir     = Join-Path $Target 'ai-kit\age\mac'
 $AgeWinDir     = Join-Path $Target 'ai-kit\age\win'
+$KeePassLinDir = Join-Path $Target 'ai-kit\keepassxc\linux'
+$KeePassMacDir = Join-Path $Target 'ai-kit\keepassxc\mac'
+$KeePassWinDir = Join-Path $Target 'ai-kit\keepassxc\win'
+$FfmpegLinDir  = Join-Path $Target 'ai-kit\ffmpeg\linux'
+$FfmpegMacDir  = Join-Path $Target 'ai-kit\ffmpeg\mac'
+$FfmpegWinDir  = Join-Path $Target 'ai-kit\ffmpeg\win'
 $VaultDir      = Join-Path $Target 'vault'
 $ZimDir        = Join-Path $Target 'zim'
 $MapsDir       = Join-Path $Target 'maps'
@@ -594,7 +624,10 @@ foreach ($d in @($RuntimeDir, $ModelsDir, $WhisperDir, $KiwixWinDir, $KiwixLinDi
                  $RedbeanDir, $RedbeanLuaDir,
                  $SherpaLinDir, $SherpaMacDir, $SherpaWinDir, $SherpaModDir,
                  $SdImgLinDir, $SdImgMacDir, $SdImgWinDir, $SdImgModelDir,
-                 $AgeLinDir, $AgeMacDir, $AgeWinDir, $VaultDir,
+                 $AgeLinDir, $AgeMacDir, $AgeWinDir,
+                 $KeePassLinDir, $KeePassMacDir, $KeePassWinDir,
+                 $FfmpegLinDir, $FfmpegMacDir, $FfmpegWinDir,
+                 $VaultDir,
                  $ZimDir, $MapsDir, $OcrLibDir, $OcrLangDir, $DocsDir, $DoomDir,
                  $ChatDir, $WorkspaceDir, $WsDocsDir, $WsJournalDir, $WsInboxDir)) {
     New-Item -ItemType Directory -Force -Path $d | Out-Null
@@ -1110,6 +1143,38 @@ $ImgVaeUrl       = 'https://huggingface.co/black-forest-labs/FLUX.2-small-decode
 $ImgVaeBytes     = 249519092
 $ImgVaeFilename  = 'full_encoder_small_decoder.safetensors'
 
+# KeePassXC — cross-OS password manager, GPL-2.0+.
+# Linux: AppImage (self-contained, deposit raw; launcher extracts on first run with --appimage-extract).
+# macOS: arm64 .dmg (deferred extraction — hdiutil runs at first launch, not at build time).
+# Windows: Win64.zip (flattened; keepassxc.ini activates portable mode so config/db stays next to binary).
+$KeePassXcVersion      = '2.7.12'
+$KeePassXcLinuxFilename = "KeePassXC-${KeePassXcVersion}-x86_64.AppImage"
+$KeePassXcLinuxUrl     = "https://github.com/keepassxreboot/keepassxc/releases/download/${KeePassXcVersion}/${KeePassXcLinuxFilename}"
+$KeePassXcLinuxBytes   = 49283072
+$KeePassXcMacFilename  = "KeePassXC-${KeePassXcVersion}-arm64.dmg"
+$KeePassXcMacUrl       = "https://github.com/keepassxreboot/keepassxc/releases/download/${KeePassXcVersion}/${KeePassXcMacFilename}"
+$KeePassXcMacBytes     = 37748736
+$KeePassXcWinFilename  = "KeePassXC-${KeePassXcVersion}-Win64.zip"
+$KeePassXcWinUrl       = "https://github.com/keepassxreboot/keepassxc/releases/download/${KeePassXcVersion}/${KeePassXcWinFilename}"
+$KeePassXcWinBytes     = 36700160
+
+# ffmpeg — GPL-3.0+. BtbN builds for Linux/Windows; Martin-Riedl for macOS arm64.
+#
+# NOTE: BtbN's "latest" tag is rolling for the n7.1 stable branch — re-running
+# build-usb on different days may fetch different patch builds. The n7.1 major
+# version is pinned; only the specific commit within that release line can vary.
+# Trade-off: always-current security patches without the pain of manual version
+# bumps. Pin to a specific commit tag only if reproducible builds matter.
+$FfmpegVersion       = 'n7.1'
+$FfmpegLinux64Url    = "https://github.com/BtbN/FFmpeg-Builds/releases/download/latest/ffmpeg-${FfmpegVersion}-latest-linux64-gpl-7.1.tar.xz"
+$FfmpegLinux64Bytes  = 122683392
+$FfmpegLinuxArm64Url  = "https://github.com/BtbN/FFmpeg-Builds/releases/download/latest/ffmpeg-${FfmpegVersion}-latest-linuxarm64-gpl-7.1.tar.xz"
+$FfmpegLinuxArm64Bytes = 104857600
+$FfmpegMacUrl        = 'https://ffmpeg.martin-riedl.de/download/macos/arm64/1777624525_N-124279-g0f6ba39122/ffmpeg.zip'
+$FfmpegMacBytes      = 28950528
+$FfmpegWinUrl        = "https://github.com/BtbN/FFmpeg-Builds/releases/download/latest/ffmpeg-${FfmpegVersion}-latest-win64-gpl-7.1.zip"
+$FfmpegWinBytes      = 164626432
+
 if ($DoomIncludeImg -eq 1) {
     Write-Host ''
     Write-Host "==> image gen (sd.cpp $ImgVersion + FLUX.2 klein)"
@@ -1241,6 +1306,149 @@ if (($DoomIncludeVault -eq $null) -or ($DoomIncludeVault -eq 1)) {
     }
 }
 
+# ---------------------------------------------------------------- KeePassXC (passwords)
+
+# Per-OS KeePassXC password manager binaries, GPL-2.0+.
+# Linux:   deposit raw AppImage as-is (PowerShell on Windows can't run --appimage-extract;
+#          the launcher detects and extracts on a Linux end-user host at first run).
+# macOS:   fetch .dmg raw (deferred extraction by launcher via hdiutil at first launch).
+# Windows: fetch Win64.zip, Expand-Archive, flatten KeePassXC-<ver>/ subdir, write
+#          keepassxc.ini to activate portable mode (config/db stays next to binary).
+if ($DoomIncludePasswords -eq 1) {
+    Write-Host ''
+    Write-Host "==> passwords (KeePassXC $KeePassXcVersion)"
+
+    # Linux — deposit raw AppImage
+    $linAppImage = Join-Path $KeePassLinDir $KeePassXcLinuxFilename
+    if (-not (Test-Size -Path $linAppImage -Expected $KeePassXcLinuxBytes)) {
+        Get-File -Url $KeePassXcLinuxUrl -Dest $linAppImage -Expected $KeePassXcLinuxBytes -Label "KeePassXC $KeePassXcVersion linux-x64 AppImage (~47 MB)"
+    } else {
+        Write-Host "  [skip] KeePassXC linux AppImage already present"
+    }
+
+    # macOS — fetch .dmg raw (extraction deferred to first-launch via hdiutil)
+    $macDmg = Join-Path $KeePassMacDir $KeePassXcMacFilename
+    if (-not (Test-Size -Path $macDmg -Expected $KeePassXcMacBytes)) {
+        Get-File -Url $KeePassXcMacUrl -Dest $macDmg -Expected $KeePassXcMacBytes -Label "KeePassXC $KeePassXcVersion osx-arm64 dmg (~36 MB)"
+    } else {
+        Write-Host "  [skip] KeePassXC mac dmg already present"
+    }
+
+    # Windows — fetch Win64.zip, extract, flatten subdir, write portable-mode ini
+    $winExe = Join-Path $KeePassWinDir 'KeePassXC.exe'
+    if (-not (Test-Path -LiteralPath $winExe)) {
+        $winZip = Join-Path $env:TEMP $KeePassXcWinFilename
+        Get-File -Url $KeePassXcWinUrl -Dest $winZip -Expected $KeePassXcWinBytes -Label "KeePassXC $KeePassXcVersion win64 zip (~35 MB)"
+        Expand-Archive -LiteralPath $winZip -DestinationPath $KeePassWinDir -Force
+        # Flatten the nested KeePassXC-<version>/ subdir
+        $nestedDir = Get-ChildItem -LiteralPath $KeePassWinDir -Directory | Select-Object -First 1
+        if ($nestedDir) {
+            Get-ChildItem -LiteralPath $nestedDir.FullName -Force |
+                Move-Item -Destination $KeePassWinDir -Force
+            Remove-Item -LiteralPath $nestedDir.FullName -Recurse -Force
+        }
+        Remove-Item -LiteralPath $winZip -Force
+        # Write keepassxc.ini to activate portable mode
+        $iniPath = Join-Path $KeePassWinDir 'keepassxc.ini'
+        @("[General]", "PortableMode=true") | Set-Content -LiteralPath $iniPath
+        Write-Host "  [extract] KeePassXC.exe + keepassxc.ini (portable mode)"
+    } else {
+        Write-Host "  [skip] KeePassXC win already extracted"
+    }
+
+    # License files
+    Copy-Item -LiteralPath (Join-Path $Repo 'licenses\keepassxc-NOTICE.md')     -Destination (Join-Path $Target 'ai-kit\keepassxc\NOTICE.md')      -Force
+    Copy-Item -LiteralPath (Join-Path $Repo 'licenses\keepassxc-LICENSE-GPL-2.0') -Destination (Join-Path $Target 'ai-kit\keepassxc\LICENSE-GPL-2.0') -Force
+
+    # passwords/ skeleton — silently skipped if Wave 2's V11-10 hasn't yet produced the file
+    if (Test-Path -LiteralPath (Join-Path $Repo 'passwords\README.txt')) {
+        New-Item -ItemType Directory -Force -Path (Join-Path $Target 'passwords') | Out-Null
+        Copy-Item -LiteralPath (Join-Path $Repo 'passwords\README.txt') -Destination (Join-Path $Target 'passwords\README.txt') -Force
+    }
+}
+
+# ---------------------------------------------------------------- ffmpeg
+
+# Per-OS static ffmpeg binaries, GPL-3.0+.
+# Linux x64 + arm64: BtbN .tar.xz. Use tar.exe -xJf (Windows 10+ ships bsdtar with xz support).
+#   Architecture controlled by $env:DOOM_FFMPEG_LINUX_ARCH or default x64.
+# macOS arm64: Martin-Riedl .zip (Expand-Archive).
+# Windows x64: BtbN win64-gpl .zip (Expand-Archive), flatten nested ffmpeg-*/bin/ into win/.
+if ($DoomIncludeFfmpeg -eq 1) {
+    Write-Host ''
+    Write-Host "==> ffmpeg ($FfmpegVersion)"
+
+    # Linux — .tar.xz from BtbN; x64 by default, arm64 via env var
+    $linArch = if ($env:DOOM_FFMPEG_LINUX_ARCH -eq 'arm64') { 'arm64' } else { 'x64' }
+    $linFfmpegBin = Join-Path $FfmpegLinDir 'ffmpeg'
+    $linFfprobeBin = Join-Path $FfmpegLinDir 'ffprobe'
+    if ((-not (Test-Path -LiteralPath $linFfmpegBin)) -or (-not (Test-Path -LiteralPath $linFfprobeBin))) {
+        if ($linArch -eq 'arm64') {
+            $linTxz = Join-Path $env:TEMP "ffmpeg-linuxarm64.tar.xz"
+            Get-File -Url $FfmpegLinuxArm64Url -Dest $linTxz -Expected $FfmpegLinuxArm64Bytes -Label "ffmpeg $FfmpegVersion linuxarm64 (~100 MB)"
+        } else {
+            $linTxz = Join-Path $env:TEMP "ffmpeg-linux64.tar.xz"
+            Get-File -Url $FfmpegLinux64Url -Dest $linTxz -Expected $FfmpegLinux64Bytes -Label "ffmpeg $FfmpegVersion linux64 (~117 MB)"
+        }
+        $tar = Get-Command tar -ErrorAction SilentlyContinue
+        if ($tar) {
+            # Stage in temp with strip=1 (drops top-level dir, keeps bin/), then
+            # move only ffmpeg + ffprobe into the dest. strip=2 would scatter
+            # sibling dirs (doc/, presets/, etc.) directly into FfmpegLinDir.
+            $linStage = Join-Path $env:TEMP 'ffmpeg-linux-stage'
+            if (Test-Path -LiteralPath $linStage) { Remove-Item -LiteralPath $linStage -Recurse -Force }
+            New-Item -ItemType Directory -Force -Path $linStage | Out-Null
+            & tar -xJf $linTxz -C $linStage --strip-components=1
+            Move-Item -LiteralPath (Join-Path $linStage 'bin\ffmpeg')  -Destination $FfmpegLinDir -Force
+            Move-Item -LiteralPath (Join-Path $linStage 'bin\ffprobe') -Destination $FfmpegLinDir -Force
+            Remove-Item -LiteralPath $linTxz -Force
+            Remove-Item -LiteralPath $linStage -Recurse -Force
+            Write-Host "  [extract] ffmpeg + ffprobe -> $FfmpegLinDir"
+        } else {
+            Write-Host "  [warn] tar.exe not found — leaving $linTxz for manual extraction"
+        }
+    } else {
+        Write-Host "  [skip] ffmpeg linux already present"
+    }
+
+    # macOS arm64 — Martin-Riedl .zip (contains ffmpeg at root)
+    $macFfmpegBin = Join-Path $FfmpegMacDir 'ffmpeg'
+    if (-not (Test-Path -LiteralPath $macFfmpegBin)) {
+        $macZip = Join-Path $env:TEMP 'ffmpeg-mac.zip'
+        Get-File -Url $FfmpegMacUrl -Dest $macZip -Expected $FfmpegMacBytes -Label "ffmpeg $FfmpegVersion osx-arm64 (~28 MB)"
+        Expand-Archive -LiteralPath $macZip -DestinationPath $FfmpegMacDir -Force
+        Remove-Item -LiteralPath $macZip -Force
+        Write-Host "  [extract] ffmpeg mac -> $FfmpegMacDir"
+    } else {
+        Write-Host "  [skip] ffmpeg mac already present"
+    }
+
+    # Windows x64 — BtbN win64-gpl .zip; flatten nested ffmpeg-*/bin/ into win/
+    $winFfmpegBin = Join-Path $FfmpegWinDir 'ffmpeg.exe'
+    if (-not (Test-Path -LiteralPath $winFfmpegBin)) {
+        $winZip = Join-Path $env:TEMP 'ffmpeg-win.zip'
+        Get-File -Url $FfmpegWinUrl -Dest $winZip -Expected $FfmpegWinBytes -Label "ffmpeg $FfmpegVersion win64-gpl (~157 MB)"
+        $tmpExtract = Join-Path $env:TEMP 'ffmpeg-win-extract'
+        Expand-Archive -LiteralPath $winZip -DestinationPath $tmpExtract -Force
+        Remove-Item -LiteralPath $winZip -Force
+        # Archive nests: ffmpeg-n7.1-latest-win64-gpl-7.1/bin/ffmpeg.exe etc.
+        # Flatten contents of the nested bin/ directory into $FfmpegWinDir
+        $nestedBin = Get-ChildItem -LiteralPath $tmpExtract -Recurse -Filter 'ffmpeg.exe' | Select-Object -First 1
+        if ($nestedBin) {
+            Get-ChildItem -LiteralPath $nestedBin.DirectoryName -Force |
+                Move-Item -Destination $FfmpegWinDir -Force
+        }
+        Remove-Item -LiteralPath $tmpExtract -Recurse -Force
+        Write-Host "  [extract] ffmpeg.exe + ffprobe.exe -> $FfmpegWinDir"
+    } else {
+        Write-Host "  [skip] ffmpeg win already present"
+    }
+
+    # License files
+    Copy-Item -LiteralPath (Join-Path $Repo 'licenses\ffmpeg-NOTICE.md')      -Destination (Join-Path $Target 'ai-kit\ffmpeg\NOTICE.md')      -Force
+    Copy-Item -LiteralPath (Join-Path $Repo 'licenses\ffmpeg-LICENSE-GPL-3.0') -Destination (Join-Path $Target 'ai-kit\ffmpeg\LICENSE-GPL-3.0') -Force
+}
+
 # ---------------------------------------------------------------- launchers + dashboard
 
 Write-Host ''
@@ -1250,7 +1458,7 @@ Copy-Item -LiteralPath (Join-Path $Repo 'launchers\start.bat')     -Destination 
 Copy-Item -LiteralPath (Join-Path $Repo 'launchers\start.command') -Destination (Join-Path $Target 'start.command') -Force
 Copy-Item -LiteralPath (Join-Path $Repo 'launchers\start.sh')      -Destination (Join-Path $Target 'start.sh')      -Force
 
-foreach ($tool in @('whisper', 'wiki', 'ocr', 'docs', 'doom', 'embed', 'vault', 'img')) {
+foreach ($tool in @('whisper', 'wiki', 'ocr', 'docs', 'doom', 'embed', 'vault', 'img', 'passwords', 'ffmpeg')) {
     foreach ($ext in @('bat', 'command', 'sh')) {
         Copy-Item -LiteralPath (Join-Path $Repo "launchers\start-$tool.$ext") `
                   -Destination (Join-Path $Target "start-$tool.$ext") -Force

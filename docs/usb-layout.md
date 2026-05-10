@@ -20,6 +20,8 @@ USB root (D:\, /mnt/usb, /Volumes/USB, …)
 ├── start-embed.bat / .command / .sh      EmbeddingGemma side-arm for RAG (port 8769)
 ├── start-vault.bat / .command / .sh      age-decrypt vault to host tmpdir
 ├── start-img.bat / .command / .sh        sd-cli image gen (FLUX.2 klein, no port)
+├── start-passwords.bat / .command / .sh  KeePassXC GUI password manager
+├── start-ffmpeg.bat / .command / .sh     ffmpeg + ffprobe PATH-primer shell, no port
 ├── ai-kit/
 │   ├── runtime/                          llamafile 0.10.1 (43 MB APE polyglot, byte-identical
 │   │                                     across OSes; .exe-renamed copy for Windows double-click)
@@ -44,13 +46,21 @@ USB root (D:\, /mnt/usb, /Volumes/USB, …)
 │   │   └── models/supertonic/            Supertonic int8 ONNX bundle (~120 MB shared)
 │   ├── age/{linux,mac,win}/              v0.9+ — age v1.3.1 vault binaries (~6-7 MB per OS,
 │   │                                     BSD-3 native Go from FiloSottile/age, NOT a polyglot)
-│   └── sd-img/                           v0.10+ — sd-cpp + FLUX.2 klein companion files
-│       ├── linux/                        sd-cli + libstable-diffusion.so
-│       ├── mac/                          sd-cli + libstable-diffusion.dylib (arm64)
-│       ├── win/                          sd-cli.exe + stable-diffusion.dll
-│       └── models/
-│           ├── flux-2-klein-4b-Q4_K_M.gguf            ~2.43 GB · transformer · Apache-2.0
-│           └── full_encoder_small_decoder.safetensors ~238 MB · VAE · Apache-2.0
+│   ├── sd-img/                           v0.10+ — sd-cpp + FLUX.2 klein companion files
+│   │   ├── linux/                        sd-cli + libstable-diffusion.so
+│   │   ├── mac/                          sd-cli + libstable-diffusion.dylib (arm64)
+│   │   ├── win/                          sd-cli.exe + stable-diffusion.dll
+│   │   └── models/
+│   │       ├── flux-2-klein-4b-Q4_K_M.gguf            ~2.43 GB · transformer · Apache-2.0
+│   │       └── full_encoder_small_decoder.safetensors ~238 MB · VAE · Apache-2.0
+│   ├── keepassxc/                        v0.11+ — KeePassXC per-OS binaries (GPL-2.0+)
+│   │   ├── linux/
+│   │   ├── mac/
+│   │   └── win/
+│   └── ffmpeg/                           v0.11+ — ffmpeg + ffprobe per-OS (GPL-3.0+)
+│       ├── linux/
+│       ├── mac/
+│       └── win/
 ├── chat/                                 v0.8+ — Vendored Hollama 0.35.4 SPA + 5 adapter files
 ├── doom/                                 v0.5+ — Dwasm bundle + shareware DOOM1.WAD (GPL-2.0)
 ├── workspace/                            v0.8+ — RAG corpus root
@@ -61,6 +71,9 @@ USB root (D:\, /mnt/usb, /Volumes/USB, …)
 │       └── system.md                     per-workspace system prompt for chat
 ├── vault/                                v0.9+ — encrypted recovery blob (user-created)
 │   └── recovery.tar.age                  age-encrypted tarball; decrypt with start-vault
+├── passwords/                            v0.11+ — KeePassXC database root
+│   ├── README.txt                        setup guide + creation ceremony
+│   └── vault.kdbx                        (user-created on first run)
 ├── zim/                                  Wikipedia archives (default: Simple English ~921 MB)
 ├── ocr/                                  v0.4+ — Tesseract.js bundle + lang-data (English ~4 MB)
 ├── maps/                                 OSM .pbf files (default: Monaco; sideload to phone app)
@@ -75,8 +88,8 @@ custom path:
 | Bundle      | Size     | Contents                                                                                   |
 |-------------|----------|--------------------------------------------------------------------------------------------|
 | `tiny`      | ~5.4 GB  | E4B + Simple Wikipedia. No maps, no voice, no DOOM, no TTS, no image gen.                  |
-| `balanced`  | ~6.5 GB  | E4B + Embed + Simple Wikipedia + Monaco maps + all side-arms + redbean + DOOM + TTS.       |
-| `full`      | ~28.5 GB | Everything — all four models + all side-arms + redbean + DOOM + TTS + vault + image gen.   |
+| `balanced`  | ~6.75 GB | E4B + Embed + Simple Wikipedia + Monaco maps + all side-arms + redbean + DOOM + TTS + KeePassXC password manager. |
+| `full`      | ~29.1 GB | Everything — all four models + all side-arms + redbean + DOOM + TTS + vault + image gen + KeePassXC + ffmpeg.     |
 
 `bundle=full` and `-y` (non-interactive) produce byte-identical state — keep
 `presets/bundles.tsv`'s `full` row in lockstep with bash `apply_baked_defaults()`.

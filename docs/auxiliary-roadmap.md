@@ -105,7 +105,7 @@ at ~22.3 GB on top.
 
 | Tool | Default size | Port | Notes |
 |------|--------------|------|-------|
-| **age v1.3.1 + recovery vault** | ~25 MB total (3 per-OS native Go binaries, ~9 MB each) | n/a (CLI, no port) | Per-OS binaries at `ai-kit/age/{linux,mac,win}/`. User creates `vault/recovery.tar.age` via the documented ceremony; launcher `start-vault.{sh,command,bat}` decrypts to host tmpdir to preserve POSIX `0600` on SSH keys (exFAT can't store mode bits). Air-gapped from redbean — no HTTP surface, no `/vault/decrypt` endpoint. BSD-3 license, native Go (no Cosmopolitan APE polyglot, no Defender false-positive). Full ceremony walkthrough: [`docs/vault-guide.md`](vault-guide.md). On-USB short reference: `vault/README.txt`. KeePassXC Portable deferred (no target version set — would force a Windows-only caveat that breaks the kit's same-files-everywhere axiom). |
+| **age v1.3.1 + recovery vault** | ~25 MB total (3 per-OS native Go binaries, ~9 MB each) | n/a (CLI, no port) | Per-OS binaries at `ai-kit/age/{linux,mac,win}/`. User creates `vault/recovery.tar.age` via the documented ceremony; launcher `start-vault.{sh,command,bat}` decrypts to host tmpdir to preserve POSIX `0600` on SSH keys (exFAT can't store mode bits). Air-gapped from redbean — no HTTP surface, no `/vault/decrypt` endpoint. BSD-3 license, native Go (no Cosmopolitan APE polyglot, no Defender false-positive). Full ceremony walkthrough: [`docs/vault-guide.md`](vault-guide.md). On-USB short reference: `vault/README.txt`. KeePassXC Portable deferred (no target version set — would force a Windows-only caveat that breaks the kit's same-files-everywhere axiom). (NOTE 2026-05-10: cross-OS framing was wrong; KeePassXC ships per-OS binaries identically to kiwix/age — see v0.11 entry below.) |
 
 **Key decisions** (full rationale in [`docs/research/v0.9-vault-security-2026-05-09.md`](research/v0.9-vault-security-2026-05-09.md)):
 - Always-on (no `bundles.tsv` knob) — 25 MB doesn't warrant a wizard prompt; `DOOM_INCLUDE_VAULT=1` env-var override is the suppression hatch.
@@ -125,6 +125,15 @@ at ~22.3 GB on top.
 
 **Bonus AI core option:** Because FLUX.2 klein's `--llm` flag wants a Qwen3-class encoder, the kit ships Qwen3-4B Q4\_K\_M (~2.33 GB) at `ai-kit/models/` rather than burying it inside `sd-img/`. The `start.{sh,bat,command}` AI core picker runtime-detects this file and offers it as a 3rd menu option (Gemma 4 E4B / Gemma 4 26B / Qwen3 4B). Hollama picks it up automatically via llamafile's `/v1/models`. Tiny/balanced bundles without image gen don't ship Qwen3 — picker gracefully shows 2 options.
 
+### v0.11 (2026-05-10) — KeePassXC + ffmpeg
+
+| Tool | Default size | Port | Notes |
+|------|--------------|------|-------|
+| **KeePassXC 2.7.12** | ~250 MB cross-OS (~80–90 MB per OS) | n/a (GUI app, no port) | Per-OS GUI binaries at `ai-kit/keepassxc/{linux,mac,win}/`. Launcher `start-passwords.{sh,command,bat}` opens KeePassXC directly against `passwords/vault.kdbx` on the USB root. User creates the vault on first run; launcher banner explains the workflow. GPL-2.0+ (KeePassXC upstream license). Bundle: balanced + full. Full usage guide: [`docs/keepassxc-guide.md`](keepassxc-guide.md). On-USB short reference: `passwords/README.txt`. |
+| **ffmpeg n7.1** | ~210 MB cross-OS (~70 MB per OS) | n/a (CLI, no port) | Static ffmpeg n7.1 per-OS native binaries at `ai-kit/ffmpeg/{linux,mac,win}/`. BtbN GPL build for Linux/Windows; Martin-Riedl GPL-3.0+ build for macOS Apple Silicon. Launcher `start-ffmpeg.{sh,command,bat}` primes `PATH` so `ffmpeg` and `ffprobe` resolve for the session without permanently modifying the host environment. Pairs with whisperfile (live captions) and `sd-img` (animated outputs). GPL-3.0+ license boundary mirrors `doom/` (see "Why GPL everywhere" below). Bundle: full-only. Full usage guide: [`docs/ffmpeg-guide.md`](ffmpeg-guide.md). |
+
+**Why GPL everywhere for ffmpeg (not LGPL):** The kit's cross-OS axiom — same files work on Linux, macOS, and Windows — requires a pre-built static ffmpeg for each OS that includes h264/h265 encode. No LGPL-licensed static ffmpeg binary exists for macOS Apple Silicon: evermeet.cx ships Intel-only GPL builds; Martin-Riedl ships macOS arm64 builds under GPL-3.0+. Forcing LGPL would mean either (a) no Mac arm64 support, or (b) no h264/h265 encode on Mac, or (c) an asymmetric per-OS license matrix that is confusing to document and error-prone to maintain. A single GPL-3.0+ boundary for the entire ffmpeg side-arm — mirroring the `doom/` GPL-2.0 precedent — is the cleanest solution. The ffmpeg license boundary is documented in `ai-kit/ffmpeg/LICENSE` and linked from [`docs/ffmpeg-guide.md`](ffmpeg-guide.md).
+
 ---
 
 ## Pending — high payoff (next picks)
@@ -138,7 +147,6 @@ Ranked by "value per gigabyte" given the prepper / off-grid framing.
 | Item | Size | Notes |
 |------|------|-------|
 | **Project Gutenberg subset + Calibre Portable** | ~3 GB | A few thousand classic books. Calibre Portable is Win-only. Could ship .epub directly + recommend a portable reader per OS. |
-| **Static ffmpeg** | ~80 MB | Audio/video swiss-army. Pairs with whisperfile for live captions, with `sd-img` for animated outputs. |
 | **Bigger Wikipedia ZIMs** | up to ~50 GB | The launcher already picks up any `zim/*.zim`. Add a build-script flag to fetch `wikipedia_en_top_nopic` (~6 GB) or the full `wikipedia_en_all_nopic` (~50 GB). |
 | **Multilingual Kiwix** | varies | Per-language ZIM selection. Build script needs a config knob. |
 | **Bootable rescue ISOs + Ventoy** | 5–20 GB | Currently BYO. Could pre-populate `iso/` and ship a Ventoy installer. |
@@ -181,11 +189,6 @@ memtest86, Hiren's BootCD PE, smartmontools — for "the laptop is
 acting weird, is it the RAM?" scenarios. Mostly ISOs that pair with
 Ventoy. Not really new but worth grouping under "diagnostics" with
 its own dashboard card.
-
-### Local-first password manager (KeePassXC Portable)
-
-`vault/` covers SSH/GPG keys; KeePassXC covers website passwords.
-Ships as portable .exe per OS, ~30 MB. Pairs with the age vault.
 
 ### `redbean`-hosted RAG over the journal/workspace
 
