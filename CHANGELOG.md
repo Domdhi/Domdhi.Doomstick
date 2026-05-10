@@ -12,6 +12,34 @@ Format based on [Keep a Changelog](https://keepachangelog.com/).
 
 ---
 
+## [0.11.1] — 2026-05-10
+
+*Same-day doc-fix sweep — corrects the single FAIL from v0.11 Windows
+verification (PRE.G size assertion). No code changes; verification recipe
+only.*
+
+### Fixed
+
+- **`docs/testing/windows-verification.md` PRE.G** — size assertion was
+  baselined against `KeePassXC.exe` alone (~5.7 MB thin Qt frontend) but
+  the documented range `[25M, 80M]` is the total dir footprint (~78 MB
+  across 131 files: Qt5*.dll, libcrypto, botan, plugins\\, translations\\).
+  T17a (`--version` → exit 0) proved the kit was functional throughout;
+  this was a doc bug only. Fix: switched to a recursive directory-total
+  assertion in `[60M, 110M]` per OPTION A in the v0.11 RE-VERIFY-REPORT.
+  Section 6 matrix template + Section 7 v0.11 example updated to match;
+  added a sizing rule of thumb for multi-DLL portable kits vs single-
+  binary static tools.
+
+### Notes
+
+- **No artifact change.** Kit on USB is byte-identical to v0.11.0.
+- **Single-file fix.** Only `docs/testing/windows-verification.md` exists
+  in `docs/testing/`; the recommended cross-check of macOS + Linux
+  verification docs was N/A.
+
+---
+
 ## [0.11.0] — 2026-05-10
 
 *Two new per-OS native side arms — KeePassXC password manager (GPL-2.0+) and static ffmpeg media toolkit (GPL-3.0+) — extending the kit's "fetched-only, per-OS native binary" pattern.*
