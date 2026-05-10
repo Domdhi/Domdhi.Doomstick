@@ -84,8 +84,13 @@ Format based on [Keep a Changelog](https://keepachangelog.com/).
   Re-running `build-usb` on different days fetches different (but
   same-branch) builds. Acceptable trade-off for security-patch
   freshness; flag interface is stable across n7.1 patch builds.
-- **Windows verification: DEFERRED** at ship time. WSL-side static
-  checks 5/5 PASS. Re-verify scheduled for next Windows session.
+- **Windows verification: GREEN** (2026-05-10T19:48:00Z). Build +
+  PRE.A..H + T17 (KeePassXC) + T18 (ffmpeg): 12 PASS / 1 FAIL on a
+  doc-bug (PRE.G size range was baselined against the wrong artifact;
+  install is functional per T17a `KeePassXC.exe --version`). All
+  shipped functionality verified: redbean polyglot bake, KeePassXC
+  2.7.12, ffmpeg n7.1.4 gpl-with-libmp3lame, lavfi → mp3 round-trip.
+  WSL-side static checks 5/5 PASS at dispatch.
 
 ---
 
