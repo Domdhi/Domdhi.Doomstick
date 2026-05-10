@@ -557,6 +557,10 @@ $SherpaLinDir  = Join-Path $Target 'ai-kit\sherpa-tts\linux'
 $SherpaMacDir  = Join-Path $Target 'ai-kit\sherpa-tts\mac'
 $SherpaWinDir  = Join-Path $Target 'ai-kit\sherpa-tts\win'
 $SherpaModDir  = Join-Path $Target 'ai-kit\sherpa-tts\models\supertonic'
+$AgeLinDir     = Join-Path $Target 'ai-kit\age\linux'
+$AgeMacDir     = Join-Path $Target 'ai-kit\age\mac'
+$AgeWinDir     = Join-Path $Target 'ai-kit\age\win'
+$VaultDir      = Join-Path $Target 'vault'
 $ZimDir        = Join-Path $Target 'zim'
 $MapsDir       = Join-Path $Target 'maps'
 $OcrLibDir     = Join-Path $Target 'ocr\lib'
@@ -572,6 +576,7 @@ $WsInboxDir    = Join-Path $WorkspaceDir '_inbox'
 foreach ($d in @($RuntimeDir, $ModelsDir, $WhisperDir, $KiwixWinDir, $KiwixLinDir, $KiwixMacDir,
                  $RedbeanDir, $RedbeanLuaDir,
                  $SherpaLinDir, $SherpaMacDir, $SherpaWinDir, $SherpaModDir,
+                 $AgeLinDir, $AgeMacDir, $AgeWinDir, $VaultDir,
                  $ZimDir, $MapsDir, $OcrLibDir, $OcrLangDir, $DocsDir, $DoomDir,
                  $ChatDir, $WorkspaceDir, $WsDocsDir, $WsJournalDir, $WsInboxDir)) {
     New-Item -ItemType Directory -Force -Path $d | Out-Null
@@ -982,6 +987,70 @@ if ($DoomIncludeTts -eq 1) {
     }
 }
 
+# ---------------------------------------------------------------- vault (age)
+
+# Per-OS pre-built age binaries (BSD-3, native Go, no APE polyglot, no Defender FP).
+# Sherpa pattern: one subdir per OS. Always-on (research D1) — no bundle.tsv
+# knob; $DoomIncludeVault default 1, env-var override only.
+$AgeVersion  = 'v1.3.1'
+$AgeLinuxUrl = "https://github.com/FiloSottile/age/releases/download/$AgeVersion/age-$AgeVersion-linux-amd64.tar.gz"
+$AgeMacUrl   = "https://github.com/FiloSottile/age/releases/download/$AgeVersion/age-$AgeVersion-darwin-arm64.tar.gz"
+$AgeWinUrl   = "https://github.com/FiloSottile/age/releases/download/$AgeVersion/age-$AgeVersion-windows-amd64.zip"
+$AgeBytes    = 6000000  # ~5.5 MB compressed; same threshold for all 3
+
+if (($DoomIncludeVault -eq $null) -or ($DoomIncludeVault -eq 1)) {
+    Write-Host ''
+    Write-Host "==> vault (age $AgeVersion)"
+
+    # Linux binary — .tar.gz with age/age + age/age-keygen at top level
+    $linAge = Join-Path $AgeLinDir 'age'
+    if (-not (Test-Path -LiteralPath $linAge)) {
+        $linTgz = Join-Path $AgeLinDir 'age.tar.gz'
+        Get-File -Url $AgeLinuxUrl -Dest $linTgz -Expected $AgeBytes -Label "age $AgeVersion linux-amd64"
+        if (Get-Command tar -ErrorAction SilentlyContinue) {
+            tar -xzf $linTgz -C $AgeLinDir --strip-components=1
+            Remove-Item -LiteralPath $linTgz -Force
+        } else {
+            Write-Host '  [warn] tar.exe not available; leaving age.tar.gz for manual extraction'
+        }
+    }
+
+    # macOS binary (arm64) — same shape as Linux
+    $macAge = Join-Path $AgeMacDir 'age'
+    if (-not (Test-Path -LiteralPath $macAge)) {
+        $macTgz = Join-Path $AgeMacDir 'age.tar.gz'
+        Get-File -Url $AgeMacUrl -Dest $macTgz -Expected $AgeBytes -Label "age $AgeVersion darwin-arm64"
+        if (Get-Command tar -ErrorAction SilentlyContinue) {
+            tar -xzf $macTgz -C $AgeMacDir --strip-components=1
+            Remove-Item -LiteralPath $macTgz -Force
+        } else {
+            Write-Host '  [warn] tar.exe not available; leaving age.tar.gz for manual extraction'
+        }
+    }
+
+    # Windows binary — .zip with age/age.exe + age/age-keygen.exe; flatten the age/ subdir
+    $winAge = Join-Path $AgeWinDir 'age.exe'
+    if (-not (Test-Path -LiteralPath $winAge)) {
+        $winZip = Join-Path $AgeWinDir 'age.zip'
+        Get-File -Url $AgeWinUrl -Dest $winZip -Expected $AgeBytes -Label "age $AgeVersion windows-amd64"
+        Expand-Archive -LiteralPath $winZip -DestinationPath $AgeWinDir -Force
+        # .zip nests under age/; flatten contents up one level then remove the empty subdir
+        $nestedDir = Join-Path $AgeWinDir 'age'
+        if (Test-Path -LiteralPath $nestedDir) {
+            Get-ChildItem -LiteralPath $nestedDir -Force |
+                Move-Item -Destination $AgeWinDir -Force
+            Remove-Item -LiteralPath $nestedDir -Recurse -Force
+        }
+        Remove-Item -LiteralPath $winZip -Force
+    }
+
+    # vault/ skeleton — only the README; recovery.tar.age is user-created, not fetched
+    $vaultReadme = Join-Path $Repo 'vault\README.txt'
+    if (Test-Path -LiteralPath $vaultReadme) {
+        Copy-Item -LiteralPath $vaultReadme -Destination (Join-Path $VaultDir 'README.txt') -Force
+    }
+}
+
 # ---------------------------------------------------------------- launchers + dashboard
 
 Write-Host ''
@@ -991,7 +1060,7 @@ Copy-Item -LiteralPath (Join-Path $Repo 'launchers\start.bat')     -Destination 
 Copy-Item -LiteralPath (Join-Path $Repo 'launchers\start.command') -Destination (Join-Path $Target 'start.command') -Force
 Copy-Item -LiteralPath (Join-Path $Repo 'launchers\start.sh')      -Destination (Join-Path $Target 'start.sh')      -Force
 
-foreach ($tool in @('whisper', 'wiki', 'ocr', 'docs', 'doom', 'embed')) {
+foreach ($tool in @('whisper', 'wiki', 'ocr', 'docs', 'doom', 'embed', 'vault')) {
     foreach ($ext in @('bat', 'command', 'sh')) {
         Copy-Item -LiteralPath (Join-Path $Repo "launchers\start-$tool.$ext") `
                   -Destination (Join-Path $Target "start-$tool.$ext") -Force

@@ -944,7 +944,7 @@ body.mobile-mode .terminal-action { padding: 14px 22px; }
   <div class="ebs-bar">
     <span class="ebs-mark" aria-hidden="true">☢</span>
     <span class="ebs-title">Doomstick · Offline Emergency Assistance Network</span>
-    <span class="ebs-meta">v0·7·2 / 2026·05·08 / 127.0.0.1:8765</span>
+    <span class="ebs-meta">v0·9·0 / 2026·05·09 / 127.0.0.1:8765</span>
   </div>
   <div class="ebs-stripes" aria-hidden="true"></div>
 </div>
@@ -1314,7 +1314,7 @@ body.mobile-mode .terminal-action { padding: 14px 22px; }
         <li><strong>Bootable ISOs</strong> + <a href="https://www.ventoy.net/">Ventoy</a> — Ubuntu / SystemRescue / Hiren’s BootCD</li>
         <li><strong>Portable tools</strong> — PortableGit, VS Code Portable, ripgrep, fzf, jq, 7-Zip</li>
         <li><strong>Piper TTS</strong> — text → audio, completes the voice stack with whisperfile</li>
-        <li><strong>Encrypted vault</strong> — <code>age</code>-encrypted dotfiles + SSH/GPG keys</li>
+        <li><strong>Encrypted vault</strong> — see §07 Recovery Vault (now shipped, v0.9)</li>
       </ul>
     </div>
 
@@ -1363,6 +1363,44 @@ body.mobile-mode .terminal-action { padding: 14px 22px; }
       <div class="note-num">FN·06</div>
       <h3>WSL: “APE is running on WIN32”</h3>
       <p>Prefix invocations with <code>sh</code>: <code>sh ./runtime/llamafile -m models/...</code>. The launcher already does this; the workaround is for ad-hoc commands.</p>
+    </article>
+
+  </div>
+</section>
+
+<!-- ============== §07 RECOVERY VAULT (DESKTOP) ============== -->
+
+<section class="desktop-only">
+  <h2 class="section-title"><span class="num">§07</span>Recovery Vault</h2>
+  <p class="section-lede">
+    An age-encrypted tarball of SSH keys, 2FA codes, dotfiles, and scanned IDs.
+    Passphrase-protected. Decrypts to a host tmpdir on any OS.
+    <strong>No recovery mechanism. If you lose the passphrase, the vault is gone forever.</strong>
+  </p>
+
+  <div class="grid grid-2">
+
+    <article class="terminal">
+      <span class="terminal-tag">▸ SEC·VAULT</span>
+      <h3 class="terminal-name">Recovery Vault</h3>
+      <p class="terminal-desc">
+        age-encrypted <code>vault/recovery.tar.age</code>. Decrypt with
+        <code>start-vault.bat</code> — prompts for passphrase, extracts to a temp folder,
+        opens in Explorer. No redbean, no HTTP — pure CLI. v0.9+.
+      </p>
+      <code class="terminal-cmd" data-cmd-for="start-vault.bat">start-vault.bat</code>
+      <button class="terminal-action" type="button" data-copy-path="vault/">Copy Path</button>
+    </article>
+
+    <article class="terminal">
+      <span class="terminal-tag">▸ SEC·SETUP</span>
+      <h3 class="terminal-name">First-Time Setup</h3>
+      <p class="terminal-desc">
+        No vault exists yet? See <a href="vault/README.txt">vault/README.txt</a>
+        for the full ceremony. Short version:
+        <code>tar c recovery/ | ai-kit/age/linux/age -p &gt; vault/recovery.tar.age</code>.
+      </p>
+      <a class="terminal-action" href="vault/README.txt">Open README</a>
     </article>
 
   </div>

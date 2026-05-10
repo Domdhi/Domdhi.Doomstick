@@ -31,6 +31,7 @@ USB root
 +-- README.txt                       This file
 |
 +-- start-embed.{bat,command,sh}     Embedding side-arm (port 8769; for RAG)
++-- start-vault.{bat,command,sh}     Recovery vault decrypt (port-free)
 +-- chat\                            Hollama chat tab (file://, AI + RAG + journal)
 +-- workspace\                       Per-workspace docs/ + journal/ folders (RAG corpus)
 |
@@ -52,12 +53,17 @@ USB root
 |   +-- sherpa-tts\
 |   |   +-- linux\, mac\, win\                     sherpa-onnx-offline-tts per OS
 |   |   +-- models\supertonic\                     Supertonic int8 ONNX (~120 MB)
+|   +-- age\
+|   |   +-- linux\, mac\, win\                     age binary per OS (~9 MB each)
 |   +-- *.log                       Created on first run of each tool
 |
 +-- zim\                             Wikipedia ZIM file(s) for kiwix-serve
 +-- ocr\                             tesseract.js static page + lang packs
 +-- maps\                            OSM regional .pbf (sideload to phone)
 +-- docs-offline\                    DevDocs (manual setup)
++-- vault\                           age-encrypted recovery vault
+|   +-- README.txt                   Ceremony + key-loss warning
+|   +-- recovery.tar.age             User-created encrypted blob (not in kit)
 
 
 -------------------------------------------------------------------------
@@ -183,6 +189,11 @@ SIDE ARMS (shipped with the kit)
                                     document-aware features (#filename
                                     autocomplete, journal, /rag/query).
 
+  start-vault.{bat,command,sh}      age vault decrypt. Decrypts
+                                    vault/recovery.tar.age to a
+                                    host tmpdir. See vault/README.txt
+                                    for the creation ceremony.
+
   chat\index.html                   Vendored Hollama 0.35.4 chat UI with
                                     workspace/RAG/journal/session adapters.
                                     Open as a file:// in any modern
@@ -209,7 +220,6 @@ siblings:
               boot-menu its own ISO collection.
   tools\      Portable Windows utilities (PortableGit, VS Code Portable,
               ripgrep, fzf, jq, 7-Zip).
-  vault\      An age-encrypted tarball of dotfiles, SSH keys, 2FA codes.
 
 See README.md in the source repo and docs/auxiliary-roadmap.md for the
 full pending menu and per-item rationale.

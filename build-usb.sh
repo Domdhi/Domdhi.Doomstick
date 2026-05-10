@@ -994,6 +994,60 @@ if [ "${DOOM_INCLUDE_TTS:-0}" = "1" ]; then
   fi
 fi
 
+# ---------------------------------------------------------------- vault (age)
+# age encryption engine — per-OS pre-built binaries (no APE polyglot).
+# Sherpa pattern: one subdir per OS, binary flattened to top of that dir.
+# Releases: https://github.com/FiloSottile/age/releases/tag/v1.3.1
+# Archives nest under age/ (strip-components=1 lands binary directly in OS dir).
+# Always-on (research D1) — no bundle.tsv knob; DOOM_INCLUDE_VAULT=1 default,
+# env-var override hatch only.
+
+AGE_VERSION="v1.3.1"
+AGE_LINUX_URL="https://github.com/FiloSottile/age/releases/download/${AGE_VERSION}/age-${AGE_VERSION}-linux-amd64.tar.gz"
+AGE_LINUX_BYTES=6000000
+AGE_MAC_URL="https://github.com/FiloSottile/age/releases/download/${AGE_VERSION}/age-${AGE_VERSION}-darwin-arm64.tar.gz"
+AGE_MAC_BYTES=6000000
+AGE_WIN_URL="https://github.com/FiloSottile/age/releases/download/${AGE_VERSION}/age-${AGE_VERSION}-windows-amd64.zip"
+AGE_WIN_BYTES=6000000
+
+if [ "${DOOM_INCLUDE_VAULT:-1}" = "1" ]; then
+  echo
+  echo "==> vault (age ${AGE_VERSION})"
+
+  mkdir -p "$TARGET/ai-kit/age/linux" "$TARGET/ai-kit/age/mac" "$TARGET/ai-kit/age/win"
+
+  if [ ! -x "$TARGET/ai-kit/age/linux/age" ]; then
+    AGE_LINUX_TGZ="$TARGET/ai-kit/age/linux/age.tar.gz"
+    fetch "$AGE_LINUX_URL" "$AGE_LINUX_TGZ" "$AGE_LINUX_BYTES" "age ${AGE_VERSION} linux-amd64"
+    tar -xzf "$AGE_LINUX_TGZ" -C "$TARGET/ai-kit/age/linux" --strip-components=1
+    rm -f "$AGE_LINUX_TGZ"
+    chmod +x "$TARGET/ai-kit/age/linux/age" 2>/dev/null || true
+  fi
+
+  if [ ! -x "$TARGET/ai-kit/age/mac/age" ]; then
+    AGE_MAC_TGZ="$TARGET/ai-kit/age/mac/age.tar.gz"
+    fetch "$AGE_MAC_URL" "$AGE_MAC_TGZ" "$AGE_MAC_BYTES" "age ${AGE_VERSION} darwin-arm64"
+    tar -xzf "$AGE_MAC_TGZ" -C "$TARGET/ai-kit/age/mac" --strip-components=1
+    rm -f "$AGE_MAC_TGZ"
+    chmod +x "$TARGET/ai-kit/age/mac/age" 2>/dev/null || true
+  fi
+
+  if [ ! -f "$TARGET/ai-kit/age/win/age.exe" ]; then
+    AGE_WIN_ZIP="$TARGET/ai-kit/age/win/age.zip"
+    fetch "$AGE_WIN_URL" "$AGE_WIN_ZIP" "$AGE_WIN_BYTES" "age ${AGE_VERSION} windows-amd64"
+    if command -v unzip >/dev/null 2>&1; then
+      unzip -o -j "$AGE_WIN_ZIP" -d "$TARGET/ai-kit/age/win" "*/age.exe" "*/age-keygen.exe" >/dev/null
+      rm -f "$AGE_WIN_ZIP"
+    else
+      echo "  [warn] unzip not available; leaving age.zip for manual extraction"
+    fi
+  fi
+
+  # vault/ skeleton — only the README; recovery.tar.age is user-created, not fetched
+  mkdir -p "$TARGET/vault"
+  [ -f "$REPO/vault/README.txt" ] && cp "$REPO/vault/README.txt" "$TARGET/vault/README.txt"
+fi
+
 # ---------------------------------------------------------------- launchers + dashboard
 
 echo
@@ -1005,7 +1059,7 @@ cp "$REPO/launchers/start.sh"      "$TARGET/start.sh"
 
 # Side-arm launchers — copied unconditionally so the USB layout is consistent;
 # launchers themselves print a clear error if the underlying data isn't present.
-for tool in whisper wiki ocr docs doom embed; do
+for tool in whisper wiki ocr docs doom embed vault; do
   cp "$REPO/launchers/start-$tool.bat"     "$TARGET/start-$tool.bat"
   cp "$REPO/launchers/start-$tool.command" "$TARGET/start-$tool.command"
   cp "$REPO/launchers/start-$tool.sh"      "$TARGET/start-$tool.sh"

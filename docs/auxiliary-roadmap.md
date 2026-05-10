@@ -7,6 +7,14 @@ table, expanded with research from
 [`docs/research/competition.md`](research/competition.md) and from
 operational notes captured in earlier sessions.
 
+> **Where action items live.** This doc is the *inventory* — sizes,
+> ports, status, rationale. Actionable open work is mirrored in
+> [`TODO.md`](../TODO.md) under "Build / improve → Greenfield zones",
+> with attribution back here. When an item ships, update both
+> (move it to "Shipped" here, check it off in TODO.md). Themed
+> epic groupings (which side arms ship together) live in
+> [`research/backlog-grouping-2026-05-09.md`](research/backlog-grouping-2026-05-09.md).
+
 The kit's organizing principle for side arms: each tool gets its own
 launcher, its own port (or `file://`), its own `ai-kit/<tool>/` folder
 or top-level data dir, and never collides with the AI core (port 8765).
@@ -71,32 +79,45 @@ still under any sensibly-sized USB stick. Adding the EmbeddingGemma 300M
 Q8 model already shipped in `models/` puts the AI core (E4B + 26B + Embed)
 at ~22.3 GB on top.
 
+### v0.8 (2026-05-09) — RAG + cockpit
+
+- **EmbeddingGemma RAG layer via redbean** — `/rag/ingest` chunks Markdown
+  → embeds via llamafile (port 8769) → stores raw float32 BLOBs in
+  SQLite. `/rag/query` does pure-Lua cosine top-K (no sqlite-vec — see
+  CLAUDE.md gotcha "redbean lsqlite3 has no FTS5 / no load_extension").
+  Round-trip ~500 ms on 1000-chunk corpus.
+- **Hollama 0.35.4 vendored** at `dashboard/chat/` (MIT, 78c63850) +
+  5-file adapter pattern (`_extras-*.js`) injecting `#filename`
+  autocomplete, workspace dropdown, server-backed session persistence,
+  3-server provider seeding, and journal sidebar.
+- **Per-USB chat persistence + journal** via redbean: `/chat/save`,
+  `/chat/list`, `/chat/load` (UPSERT on UUID); `/journal/append`,
+  `/journal/today` (daily markdown with auto-ingest into RAG).
+- **Workspace primitive** — folder convention at `workspace/<name>/docs/`
+  on the USB. Drop a folder of `.md` / `.txt`, ingest, ask. Per-workspace
+  scoping at every endpoint.
+- **New side-arm:** `start-embed.{bat,sh,command}` runs llamafile
+  `--embedding` on port 8769. EmbeddingGemma-300M Q8 (~329 MB) already
+  in `models/` since v0.3 — no extra fetch.
+- **New launcher:** `start.{bat,command,sh}` (chat tab).
+
+### v0.9 (2026-05-09) — age-encrypted recovery vault
+
+| Tool | Default size | Port | Notes |
+|------|--------------|------|-------|
+| **age v1.3.1 + recovery vault** | ~25 MB total (3 per-OS native Go binaries, ~9 MB each) | n/a (CLI, no port) | Per-OS binaries at `ai-kit/age/{linux,mac,win}/`. User creates `vault/recovery.tar.age` via the documented ceremony; launcher `start-vault.{sh,command,bat}` decrypts to host tmpdir to preserve POSIX `0600` on SSH keys (exFAT can't store mode bits). Air-gapped from redbean — no HTTP surface, no `/vault/decrypt` endpoint. BSD-3 license, native Go (no Cosmopolitan APE polyglot, no Defender false-positive). Full ceremony walkthrough: [`docs/vault-guide.md`](vault-guide.md). On-USB short reference: `vault/README.txt`. KeePassXC Portable deferred to v0.10 — would force a Windows-only caveat that breaks the kit's same-files-everywhere axiom. |
+
+**Key decisions** (full rationale in [`docs/research/v0.9-vault-security-2026-05-09.md`](research/v0.9-vault-security-2026-05-09.md)):
+- Always-on (no `bundles.tsv` knob) — 25 MB doesn't warrant a wizard prompt; `DOOM_INCLUDE_VAULT=1` env-var override is the suppression hatch.
+- Decrypt to host tmpdir, NOT to USB — exFAT strips POSIX mode bits.
+- Passphrase-only default; YubiKey + FIDO2 ceremonies documented but not bundled (hardware-required ceremonies kill the "plug into a stranger's machine" axiom).
+- No auto-cleanup or auto-re-encrypt — both are footguns; cleanup is explicit.
+
 ---
 
 ## Pending — high payoff (next picks)
 
 Ranked by "value per gigabyte" given the prepper / off-grid framing.
-
-### 🥇 EmbeddingGemma RAG layer via redbean `/rag/{ingest,query}` (3–5 days)
-
-The wedge nobody else has matched. Designed and queued for the next `/do`.
-
-- **Vector store:** sqlite-vec (asg017/sqlite-vec) — embeds vectors
-  directly in SQLite alongside the existing saves DB. No extra runtime,
-  no separate process. Same on-disk pattern as v0.6 DOOM saves.
-- **Chunking:** recursive 512-token split with 15% overlap, metadata-enriched.
-- **Embeddings:** llamafile's `--embedding` mode against the
-  EmbeddingGemma-300M Q8 GGUF (~329 MB, already shipped in `models/`).
-- **Endpoints:** `POST /rag/ingest`, `GET /rag/query`. Currently 501 stubs
-  in `redbean/.init.lua`.
-- **Implementation pattern:** copy `TtsHandler` shape (line 271+ of
-  `redbean/.init.lua`) for the subprocess half (embedding ingest);
-  `SaveHandler` shape for the SQLite half. Both are worked examples in
-  the same file.
-
-Full design: [`docs/research/tts-rag-2026-05-08.md`](research/tts-rag-2026-05-08.md).
-Pairs with the journaling tab and the agent layer in `TODO.md` "Build /
-improve" → unlocks both.
 
 ---
 
@@ -111,20 +132,6 @@ sweet spot: good quality, ~3 GB, runs on CPU.
 **Why not yet:** the dashboard's prepper / survival framing doesn't
 naturally cover image gen — it's a "fun" tool more than a "knowledge in
 a tin" tool. Defer until v0.5 when we have the cockpit story sorted.
-
-### 🥈 age-encrypted recovery vault (negligible size)
-
-A `vault.tar.age` at the USB root containing dotfiles, SSH/GPG keys,
-2FA backup codes, scanned ID copies. The recipe is the encryption
-ceremony, not the data — vault contents are entirely user-supplied.
-
-The kit ships:
-- `age` binary (~1 MB, static, cross-OS)
-- `vault/README.md` with the encryption + decryption ritual
-- A blank passphrase prompt at first run
-
-**Why not yet:** uncontroversial, easy to ship — just hasn't bubbled to
-the top of the queue. Could land in any v0.x release.
 
 ---
 
@@ -184,8 +191,9 @@ Ships as portable .exe per OS, ~30 MB. Pairs with the age vault.
 
 ### `redbean`-hosted RAG over the journal/workspace
 
-Promoted to "Pending — high payoff" #1 above now that redbean has shipped
-(v0.5) and its `/rag` endpoints are in-place as 501 stubs ready to fill in.
+Shipped v0.8 (2026-05-09) — see "v0.8 — RAG + cockpit" above. Architecture
+pivoted from sqlite-vec to pure-Lua cosine over BLOB columns at Wave 0 D4
+(redbean's lsqlite3 has no FTS5 and no `load_extension`).
 
 ---
 
@@ -213,10 +221,12 @@ Promoted to "Pending — high payoff" #1 above now that redbean has shipped
 
 ## Versioning notes
 
-The kit version (currently `v0.7`) ticks when a side-arm or platform
+The kit version (currently `v0.9`) ticks when a side-arm or platform
 batch ships. Recent cadence: v0.4 first side arms (2026-05-07) → v0.5
 redbean + DOOM + wizard (2026-05-07) → v0.6 USB-resident DOOM saves
-(2026-05-08) → v0.7 TTS via Sherpa-ONNX + Supertonic (2026-05-08).
+(2026-05-08) → v0.7 TTS via Sherpa-ONNX + Supertonic (2026-05-08) →
+v0.8 EmbeddingGemma RAG + chat tab (2026-05-09) → v0.9 age-encrypted
+recovery vault (2026-05-09).
 
 Side-arm sizes / URLs in `build-usb.{sh,ps1}` are pinned to a known
 release because:

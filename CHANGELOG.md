@@ -8,7 +8,67 @@ Format based on [Keep a Changelog](https://keepachangelog.com/).
 
 ## [Unreleased]
 
-*No queued items. v0.9 epic selection is open — candidates include offline image generation, an age-encrypted recovery vault, and a handheld hardware spin-off.*
+*No queued items. v0.10 epic selection is open — candidates include offline image generation, expanded YubiKey/FIDO2 vault ceremony tooling, and the Pip-Boy v2 handheld hardware spin-off.*
+
+---
+
+## [0.9.0] — 2026-05-09
+
+*"the vault" — age-encrypted recovery vault customer for SSH keys, AWS credentials, GitHub CLI tokens, WireGuard configs, and any other secrets you want to carry on the kit without storing them in cleartext.*
+
+### Added
+
+- **age v1.3.1 binaries** at `ai-kit/age/{linux,mac,win}/` (~6-7 MB per OS,
+  BSD-3 native Go from FiloSottile/age — NOT a Cosmopolitan APE polyglot,
+  so no Defender false-positive risk). Per-OS layout mirrors sherpa-tts.
+- **Per-OS vault launchers** — `start-vault.{sh,command,bat}` decrypt
+  `vault/recovery.tar.age` to a host tmpdir (`mktemp -d` on Unix,
+  `%TEMP%\doomstick-vault-…` on Windows). Decryption goes to host tmpdir
+  by design, NOT back to the USB — exFAT strips POSIX `0600` permissions
+  and would break SSH key usage. Two-stage error handling: missing-age =
+  exit 1 (fatal); missing-vault = exit 0 + creation hint (user guidance,
+  not error).
+- **`vault/README.txt`** — on-USB plain-text README (174 lines) opening
+  with a `===`-weighted CRITICAL key-loss warning, ceremonies for
+  passphrase / YubiKey / multi-recipient setup, and what-to-vault /
+  what-not-to-vault guidance.
+- **`docs/vault-guide.md`** — GitHub-only ceremony walkthrough (375
+  lines): Quick Start, Ceremony 1 (passphrase, default), Ceremony 2
+  (YubiKey + FIDO2), Ceremony 3 (multi-recipient paranoid), Master Key
+  Backup, cross-OS path table for SSH/AWS/GH/WireGuard/GPG/1Password.
+- **Dashboard §07 Recovery Vault** card pair (decrypt + setup),
+  desktop-only. Ebs-meta version bumped to `v0·9·0 / 2026·05·09`.
+- **`build-usb.{sh,ps1}` vault block** — always-on (no bundle column);
+  fetches three per-OS age archives, extracts to `ai-kit/age/<os>/`,
+  copies launcher trio to USB root. Override via `DOOM_INCLUDE_VAULT=0`
+  env var. PowerShell mirror uses `Expand-Archive` for Windows .zip and
+  `tar.exe` shellout for Linux/macOS .tar.gz.
+
+### Verified
+
+- **Cross-OS verification GREEN** — full PRE.A..E + T1..T14 + UX1..UX4
+  suite ran clean on real Windows hardware (5 PRE PASS, 14 T PASS, 1 UX
+  PASS, 3 UX SKIPPED-as-designed, 0 FAIL, 0 BLOCKED). 25/25 WSL static
+  checks PASS. v0.8.1 CORS v3 fix verified non-regressed via T7 quad
+  headers and T3 single-header invariant.
+- **age cryptographic round-trip** — magic bytes (`age-encryption.org/`)
+  intact; SHA256 byte-equal decrypt. T14b/c executed via PTY-driven
+  Linux-age substitute against the kit's own Linux binary (same upstream
+  FiloSottile v1.3.1 release as `age.exe`) because age v1.3.1 cannot be
+  passphrase-tested non-interactively on either platform — mainline
+  design constraint, not a v0.9 bug. `start-vault.bat`'s interactive
+  contract is verified separately in T14a.
+
+### Documentation
+
+- **`README.md` v0.9 manifest sync** — banners ×2 bumped to
+  `v0.9.0 · "the vault" · 2026·05·09`. §02 manifest adds `vault/`,
+  `start-vault.{bat,command,sh}`, `ai-kit/age/`. §08 Casualty Report
+  gains two `<details>` blocks (vault-not-found friendly exit-0,
+  decryption failed). §09 shipped table adds the v0.9 row; pending row
+  removed.
+- **`auxiliary-roadmap.md`** — v0.9 shipped entry under "Shipped"
+  (table + key decisions block), pending entry removed.
 
 ---
 

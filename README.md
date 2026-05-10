@@ -57,7 +57,7 @@ assembles the full USB layout for you. You supply the USB and the bandwidth
 
   ☢  EMERGENCY BROADCAST · OFFLINE EMERGENCY ASSISTANCE NETWORK  ☣
 
-      CLASSIFICATION  ▸  PUBLIC               DOOMSTICK · v0.8.0 · 2026·05·09
+      CLASSIFICATION  ▸  PUBLIC               DOOMSTICK · v0.9.0 · 2026·05·09
       TRANSMISSION    ▸  OFFLINE              COSMOPOLITAN · CPU-ONLY · USB
       AUTH            ▸  Apache-2.0 + GPL     ENDPOINT · 127.0.0.1 : 8765
 
@@ -107,6 +107,7 @@ This is a recipe — large binary artifacts (model weights, ISOs) live upstream 
 ├── args/                   Flag reference (mirrored into launchers; doesn't deploy)
 ├── ocr/                    Tesseract.js OCR static page (deploys as-is)
 ├── maps/                   OSM .pbf landing zone + sideload README
+├── vault/                  vault/README.txt (ceremony doc; recovery.tar.age gitignored)
 ├── doom/                   Dwasm bundle + DOOM1.WAD wrapper (GPL-2.0 subdir)
 ├── docs-offline/           DevDocs landing zone (manual setup)
 ├── docs/
@@ -131,6 +132,7 @@ This is a recipe — large binary artifacts (model weights, ISOs) live upstream 
 ├── 🚀 start-docs.{bat,command,sh}     DevDocs       (manual setup)
 ├── 🚀 start-doom.{bat,command,sh}     DOOM via redbean (port 8768)
 ├── 🚀 start-embed.{bat,command,sh}    Embedding side-arm for RAG (port 8769, v0.8+)
+├── 🚀 start-vault.{bat,command,sh}    Vault decrypt (age, prints cleanup reminder)
 ├── 📜 README.txt                      Short version of this doc
 ├── 💬 chat/                           Vendored Hollama chat tab (file://, v0.8+)
 ├── 📓 workspace/<name>/docs/, journal/  Per-workspace RAG corpus (v0.8+)
@@ -152,15 +154,20 @@ This is a recipe — large binary artifacts (model weights, ISOs) live upstream 
 │   │   ├── saves.db                               DOOM saves + chat sessions + RAG chunks (SQLite)
 │   │   └── .init.lua                              route handlers (/health, /save, /load, /list,
 │   │                                              /tts, /rag/*, /chat/*, /journal/*)
-│   └── sherpa-tts/
-│       ├── linux/, mac/, win/                     sherpa-onnx-offline-tts per OS (~30 MB each)
-│       └── models/supertonic/                     Supertonic int8 ONNX bundle (~120 MB)
+│   ├── sherpa-tts/
+│   │   ├── linux/, mac/, win/                     sherpa-onnx-offline-tts per OS (~30 MB each)
+│   │   └── models/supertonic/                     Supertonic int8 ONNX bundle (~120 MB)
+│   └── age/
+│       ├── linux/, mac/, win/         age binary per OS (~9 MB each)
 │
 ├── 📚 zim/wikipedia_en_simple_all_nopic_2024-06.zim   ~395 MB (default)
 ├── 🔤 ocr/                            tesseract.js + eng pack    ~15 MB
 ├── 🗺  maps/<region>.osm.pbf          OSM regional data           ~700 KB+ (Monaco default)
 ├── 📖 docs-offline/                   DevDocs (manual setup, not auto-fetched)
-└── 🪦 doom/                           Dwasm + shareware DOOM1.WAD  ~7.4 MB (GPL-2.0)
+├── 🪦 doom/                           Dwasm + shareware DOOM1.WAD  ~7.4 MB (GPL-2.0)
+└── 🔐 vault/                          Recovery vault directory
+    ├── README.txt                     Ceremony + key-loss warning
+    └── recovery.tar.age               User-created encrypted blob (not shipped)
 ```
 
 **What the kit does *not* ship** (BYO if you want them):
@@ -168,7 +175,7 @@ This is a recipe — large binary artifacts (model weights, ISOs) live upstream 
 - Bootable rescue ISOs (Ubuntu / SystemRescue / Hiren's BootCD PE) + [Ventoy](https://www.ventoy.net/)
 - Portable Windows tools (PortableGit, VS Code Portable, ripgrep, fzf, jq, 7-Zip)
 - Piper TTS (text → audio, completes the voice stack with whisperfile)
-- stable-diffusion.cpp (offline image generation), age-encrypted vault, ffmpeg, …
+- stable-diffusion.cpp (offline image generation), ffmpeg, …
 
 These and more are tracked in [`docs/auxiliary-roadmap.md`](docs/auxiliary-roadmap.md) — most are one-line additions to the build script when you feel like it.
 
@@ -399,6 +406,21 @@ Model is still loading from USB. Wait 30-60 more seconds and refresh. Or open <c
 Yes — and you should, for any session longer than a few minutes. Local SSD loads ~3-4× faster than USB. Just keep the directory structure: <code>runtime/</code> next to <code>models/</code>, with the launcher one level above. Or invoke <code>runtime/llamafile -m models/&lt;file&gt;.gguf --server --host 127.0.0.1 --port 8765 -c 8192</code> directly.
 </details>
 
+<details>
+<summary><b>start-vault: "vault/recovery.tar.age not found"</b></summary>
+<br>
+You haven't created a vault yet — the launcher's job is to decrypt an existing blob, not to bootstrap one. The launcher prints the create-vault one-liner and exits 0 (intentional — this is guidance, not an error). To create one, see <a href="docs/vault-guide.md">docs/vault-guide.md</a> Quick Start, or run from the USB:
+<pre><code>cd vault/
+tar c recovery/ | ../ai-kit/age/linux/age -p &gt; recovery.tar.age</code></pre>
+(Use <code>mac</code> or <code>win</code> in the path on those OSes; <code>tar.exe</code> + redirect-to-Set-Content on Windows PowerShell.)
+</details>
+
+<details>
+<summary><b>start-vault: "Decryption failed. Check your passphrase."</b></summary>
+<br>
+Either the passphrase was wrong, or the vault was encrypted to an identity file that's not on the decrypt host (Ceremony 2/3 in <a href="docs/vault-guide.md">docs/vault-guide.md</a>). Check: did you encrypt with <code>age -p</code> (passphrase) or <code>age -r</code> (recipient)? The default ceremony is <code>-p</code> — if you used <code>-r</code>, you need <code>age -d -i &lt;identity-file&gt;</code> instead of the launcher's pure-passphrase prompt. The tmpdir is auto-cleaned on decrypt failure (no partial extracts).
+</details>
+
 > [!TIP]
 > **Long session?** Copy `ai-kit/runtime/llamafile(.exe)` and the model GGUF to your host's local SSD. Generation speed is identical once loaded — the USB only matters for the initial model load, and exFAT is 3-4× slower than ext4/NTFS/APFS for that.
 
@@ -424,14 +446,14 @@ Eight tools shipped from v0.4 through v0.8 — see [`docs/auxiliary-roadmap.md`]
 | ✅ | **DOOM** (Dwasm + shareware WAD) | ~7.4 MB | Browser DOOM via emscripten/PrBoom+, served by redbean. Plug-and-play; no host install. |
 | ✅ | **USB-resident DOOM saves** (v0.6) | tiny | Saves persist to `ai-kit/redbean/saves.db` via redbean's `/save /load /list`. Pre-fetched on boot, hooks `FS.trackingDelegate.onCloseFile` to capture in-game saves. Travel across hosts. |
 | ✅ | **TTS via Sherpa-ONNX + Supertonic** (v0.7) | ~210 MB | Text → audio. POST `text/plain` to `:8768/tts`, get `audio/wav` back. Sherpa-ONNX v1.13.1 native C++ runtime per OS (no Python on host) + Supertonic int8 (~99M params, ranks high on CPU TTS — RTF 0.3 on a literal e-reader). Pivoted away from Kokoro to avoid a Python-on-host dependency. Full research: [`docs/research/tts-rag-2026-05-08.md`](docs/research/tts-rag-2026-05-08.md). |
-| ✅ | **EmbeddingGemma RAG + chat tab + journal** (v0.8) | shared with EmbedGemma + ~3.5 MB Hollama vendor | Vector index over `workspace/<name>/docs/` via redbean's `/rag/ingest` + `/rag/query` endpoints. Pure-Lua cosine over `embedding BLOB` columns (FTS5 isn't available in redbean's bundled lsqlite3, hence the in-Lua scan; see `redbean/lua/rag-cosine.lua` for the implementation). Vendored Hollama 0.35.4 chat tab at `chat/index.html` with five `_extras-*.js` adapters (`#filename` autocomplete, workspace dropdown, server-backed session persistence via `/chat/save`, three-server provider seed, daily-journal sidebar via `/journal/append`). Embedding side-arm `start-embed.*` boots EmbeddingGemma-300M on port 8769 on demand. |
+| ✅ | **EmbeddingGemma RAG + chat tab + journal** (v0.8) | shared with EmbedGemma + ~3.5 MB Hollama vendor | Vector index over `workspace/<name>/docs/` via redbean's `/rag/ingest` + `/rag/query` endpoints. Pure-Lua cosine over `embedding BLOB` columns (FTS5 isn't available in redbean's bundled lsqlite3 — see architecture doc for the pivot rationale). Vendored Hollama 0.35.4 chat tab at `chat/index.html` with five `_extras-*.js` adapters (`#filename` autocomplete, workspace dropdown, server-backed session persistence via `/chat/save`, three-server provider seed, daily-journal sidebar via `/journal/append`). Embedding side-arm `start-embed.*` boots EmbeddingGemma-300M on port 8769 on demand. Full design: [`docs/research/rag-architecture-2026-05-09.md`](docs/research/rag-architecture-2026-05-09.md). |
+| ✅ | **age-encrypted recovery vault** (v0.9) | ~25 MB | Per-OS `age` v1.3.1 binaries at `ai-kit/age/{linux,mac,win}/`. `vault/recovery.tar.age` is the encrypted blob (user-created). Default ceremony: `tar c recovery/ \| age -p > vault/recovery.tar.age`. Launcher `start-vault.*` decrypts to host tmpdir (preserves POSIX 0600 on SSH keys). Air-gapped from redbean — no HTTP route. BSD-3, native Go binary, no APE polyglot, no Defender FP. Full guide: [`docs/vault-guide.md`](docs/vault-guide.md). |
 
 **Still pending** (ranked by payoff):
 
 | ⭐ | Item | Size | What it adds |
 |---|------|------|-------------|
 | 🥇 | **stable-diffusion.cpp + SDXL Turbo Q4** | ~3 GB | Offline image gen. |
-| 🥈 | **age-encrypted recovery vault** | tiny | SSH/GPG keys, dotfiles, 2FA codes, scanned IDs in one encrypted tarball. |
 | 🥉 | **Project Gutenberg subset + Calibre Portable** | ~3 GB | Offline classic books. |
 | 🥉 | **Static ffmpeg** | ~80 MB | Media swiss-army knife; pairs with whisperfile for live captions. |
 | 🥉 | **Bigger Wikipedia ZIMs** | up to ~50 GB | `wikipedia_en_top_nopic` (~6 GB) is the sweet spot. |
@@ -534,6 +556,6 @@ _________________________/_ __ \_____________
 
 **stay weird. stay prepared. stay offline.**
 
-`v0.8.0 · "the wedge" · 2026·05·09`
+`v0.9.0 · "the vault" · 2026·05·09`
 
 </div>
