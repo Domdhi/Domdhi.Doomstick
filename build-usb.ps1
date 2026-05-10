@@ -1010,9 +1010,12 @@ if (($DoomIncludeVault -eq $null) -or ($DoomIncludeVault -eq 1)) {
         if (Get-Command tar -ErrorAction SilentlyContinue) {
             tar -xzf $linTgz -C $AgeLinDir --strip-components=1
             Remove-Item -LiteralPath $linTgz -Force
+            Write-Host "  [extract] $linAge"
         } else {
             Write-Host '  [warn] tar.exe not available; leaving age.tar.gz for manual extraction'
         }
+    } else {
+        Write-Host "  [skip] $linAge (already extracted)"
     }
 
     # macOS binary (arm64) — same shape as Linux
@@ -1023,9 +1026,12 @@ if (($DoomIncludeVault -eq $null) -or ($DoomIncludeVault -eq 1)) {
         if (Get-Command tar -ErrorAction SilentlyContinue) {
             tar -xzf $macTgz -C $AgeMacDir --strip-components=1
             Remove-Item -LiteralPath $macTgz -Force
+            Write-Host "  [extract] $macAge"
         } else {
             Write-Host '  [warn] tar.exe not available; leaving age.tar.gz for manual extraction'
         }
+    } else {
+        Write-Host "  [skip] $macAge (already extracted)"
     }
 
     # Windows binary — .zip with age/age.exe + age/age-keygen.exe; flatten the age/ subdir
@@ -1042,6 +1048,9 @@ if (($DoomIncludeVault -eq $null) -or ($DoomIncludeVault -eq 1)) {
             Remove-Item -LiteralPath $nestedDir -Recurse -Force
         }
         Remove-Item -LiteralPath $winZip -Force
+        Write-Host "  [extract] $winAge"
+    } else {
+        Write-Host "  [skip] $winAge (already extracted)"
     }
 
     # vault/ skeleton — only the README; recovery.tar.age is user-created, not fetched
