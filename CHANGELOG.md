@@ -8,7 +8,156 @@ Format based on [Keep a Changelog](https://keepachangelog.com/).
 
 ## [Unreleased]
 
-*No queued items. v0.10 epic selection is open — candidates include offline image generation, expanded YubiKey/FIDO2 vault ceremony tooling, and the Pip-Boy v2 handheld hardware spin-off.*
+*No queued items.*
+
+---
+
+## [0.10.1] — 2026-05-10
+
+*Same-day doc-fix sweep — closes a build-script regression and two verification recipe issues surfaced during v0.10 verification.*
+
+### Fixed
+
+- **`Invoke-PolyglotZipBake` progressive prelude duplication**
+  (`build-usb.ps1`) — `redbean.com.exe` was growing ~5-10 MB per
+  `build-usb.ps1` rebake (8.84 MB v0.9 baseline → 14.16 MB after one
+  v0.10 rebake → 24.80 MB after two). **Root cause:** modern .NET (5+)
+  preserves "extra bytes before zip data" on `ZipArchive.Update` per
+  ZIP spec, so the rewritten file STILL starts with the prelude. The
+  function's original logic captured the prelude then unconditionally
+  re-prepended it (assuming older runtime behavior of destroying the
+  prelude on rewrite). Result: prelude doubled every bake. Bash side
+  immune (Info-ZIP's plain `zip` appends without rewriting).
+  **Fix:** function now uses the authoritative
+  EOCD → CD → first-LFH-offset chain to detect Case A (older .NET
+  destroyed prelude → re-prepend + shift offsets, original behavior)
+  vs Case B (modern .NET preserved prelude → file is already correct,
+  return without mutation). Plus pre-bake input-size sanity check
+  (>12 MB → "delete + refetch") and post-bake size invariant
+  (output > prelude + 8 MB throws). Verified byte-identical to v0.9
+  baseline (8,841,876 bytes within 1.9 KB) + idempotent (build2 -
+  build1 = 0 bytes delta).
+
+### Documentation
+
+- **`docs/testing/windows-verification.md` T16a recipe** — `echo x`
+  was hanging the `start.bat` picker (intentional UX loop on invalid
+  input). Recipe now uses a timeout-kill PowerShell pattern
+  (`Start-Process` + 4s sleep + `Stop-Process`) — more reliable than
+  cmd's `timeout`/`taskkill` chain. Static-grep PASS-WITH-NOTE
+  fallback added for hosts where timeout-kill is flaky.
+- **`docs/testing/windows-verification.md` T16b PASS criterion** —
+  Qwen3-4B is a chain-of-thought reasoning model. With low
+  `max_tokens`, all generated tokens go to `message.reasoning_content`
+  and `message.content` stays empty → spurious FAIL. Recipe updated to
+  `max_tokens=1000`, PASS criterion changed to "non-empty
+  `message.content` AND `finish_reason: stop`", added a paragraph
+  documenting the `reasoning_content` vs `content` split for
+  llama.cpp / llamafile reasoning-model semantics. FAIL-mode guidance
+  added for the "content empty + finish_reason: length" case.
+- **Verification doc threshold version annotations** — PRE.A
+  (redbean.com.exe size), PRE.E (`age.exe` size), PRE.F (sd-cpp + 3
+  companions) all now carry `# baselined against vX.Y.Z` blockquote
+  comments citing measurement reference points and re-baseline
+  guidance for upgrades.
+
+---
+
+## [0.10.0] — 2026-05-10
+
+*"the easel" — offline image generation customer. Type a prompt, get a 1024×1024 PNG in 1-3 minutes on CPU. Stable-diffusion.cpp + FLUX.2 klein 4B (Apache-2.0) + Qwen3-4B text encoder. No GPU, no Python, no internet. Qwen3-4B doubles as a 3rd AI core menu option, recovering most of the size cost.*
+
+### Added
+
+- **stable-diffusion.cpp `master-596-90e87bc` per-OS native binaries**
+  at `ai-kit/sd-img/{linux,mac,win}/` (`sd-cli` + libstable-diffusion
+  shared library, Apache-2.0). Per-OS native pattern (NOT a
+  Cosmopolitan APE polyglot) — same architecture as v0.7 sherpa-tts.
+  CPU-only AVX2 builds, ~25 MB total across the three OS dirs. GPU
+  acceleration is out of scope for the kit.
+- **FLUX.2 klein 4B Q4_K_M transformer** (~2.43 GB,
+  `unsloth/FLUX.2-klein-4B-GGUF`, Apache-2.0) at
+  `ai-kit/sd-img/models/flux-2-klein-4b-Q4_K_M.gguf`. 4-step distilled
+  diffusion model; sd-cpp-supported since 2026-01-18.
+- **FLUX.2-small-decoder VAE** (~238 MB,
+  `black-forest-labs/FLUX.2-small-decoder`, Apache-2.0) at
+  `ai-kit/sd-img/models/full_encoder_small_decoder.safetensors`.
+  Ungated alternative to the gated FLUX.2-dev VAE.
+- **Qwen3-4B Q4_K_M GGUF** (~2.33 GB, `unsloth/Qwen3-4B-GGUF`,
+  Apache-2.0) at `ai-kit/models/Qwen3-4B-Q4_K_M.gguf`. Single fetch,
+  dual purpose: serves as FLUX.2's text encoder (`--llm` flag, FLUX.2
+  single-encoder architecture — NOT FLUX.1's clip_l + t5xxl pair) AND
+  a 3rd AI core menu option in `start.{sh,bat,command}`
+  (runtime-detected via `HAS_QWEN`). Hollama auto-discovers it via
+  llamafile's `/v1/models`.
+- **Per-OS image-gen launcher** — `start-img.{sh,command,bat}` reads a
+  prompt, invokes `sd-cli` with the multi-file FLUX.2 recipe (`--vae`
+  + `--llm` + `--diffusion-fa` + `--offload-to-cpu` + `--cfg-scale 1.0`
+  + `--steps 4` + `--sampling-method euler`), writes a 1024×1024 PNG to
+  the USB root timestamped `img-out-YYYYMMDD-HHMMSS.png`. Standalone —
+  NOT a redbean route (CPU 60-180s per image would block other
+  customers on the shared 8768 listener).
+- **Dashboard §08 Field Sketch Generator** card (desktop-only) + §03
+  Qwen3 weapon card. Banner bumped to `v0·10·0 / 2026·05·10`. Total
+  full-bundle size disclosed as ~28.5 GB.
+- **`docs/img-guide.md`** — user-facing walkthrough: image-gen recipe,
+  multi-file architecture rationale (transformer + VAE + text encoder),
+  Qwen3 dual-purpose narrative, RAM trade-offs (8-10 GB working set —
+  AI core and image gen cannot coexist on an 8 GB host), and "missing
+  tensor" troubleshooting for users who bypass the launcher.
+- **`build-usb.{sh,ps1}` image-gen block** — wizard-gated by
+  `DOOM_INCLUDE_IMG=1` (full bundle defaults to 1; tiny + balanced
+  default to 0). Three fetches (sd-cpp archive + FLUX.2 transformer +
+  VAE) + one shared with AI core (Qwen3) when image gen is enabled.
+  Idempotency via two-file presence checks (binary + library per OS).
+
+### Changed
+
+- **`presets/bundles.tsv` schema-shift** — new `img` column at TSV
+  position 14 (`tiny=0`, `balanced=0`, `full=1`). Total field count
+  19 per row. `full` bundle size: ~25.9 GB → ~28.5 GB; `bundle=full`
+  and `-y` continue to produce byte-identical `DOOM_*` state.
+- **`start.{sh,bat,command}` model picker** — Qwen3 4B exposed as a
+  3rd menu option when `ai-kit/models/Qwen3-4B-Q4_K_M.gguf` exists at
+  runtime. Tiny/balanced bundles without image gen gracefully show
+  the original 2-option picker.
+- **README / dashboard / auxiliary-roadmap surfaces** synced to v0.10
+  reality — full bundle size, the four weights (was three), §03
+  manifest Qwen3 weapon card, §08 image-gen card, §09 shipped table,
+  banner dates filled in (`v0.10.0 · "the easel" · 2026·05·10`).
+
+### Verified
+
+- **Cross-OS verification ALL GREEN** on real Windows hardware after
+  Wave 4 pivot fix. T15a (`sd-cli --help`) PASS, T15b (image gen
+  end-to-end) PASS — 749,204-byte PNG with correct magic bytes in
+  261s wall, T15c (missing-binary fail-soft) PASS, T16a/b (Qwen3
+  picker option + chat round-trip) PASS. 5 PRE PASS, 14 T PASS, 2 UX
+  PASS, 2 UX SKIPPED-as-designed, 0 FAIL.
+
+### Documentation
+
+- **CLAUDE.md image-gen gotcha** — corrected the original "single-file
+  GGUF" claim (a misread of unsloth's `diffusion-single-file` HF tag,
+  which means "single-file *transformer*", NOT "all-in-one model").
+  Now documents the three-file architecture verbatim per
+  `sd.cpp/docs/flux2.md`, the `--cfg-scale 1.0` pin for klein 4B
+  (NOT 4.0 — that's klein-base 20-step), and a "Lesson from v0.10
+  W3 BUG-2" callout for future model decisions.
+- **`docs/testing/windows-verification.md`** — new PRE.F (5-path /
+  3-size check covering transformer + VAE + Qwen3), new T15 trio
+  (`sd-cli --help`, end-to-end image gen with 10-min Pi-class timeout,
+  missing-binary fail-soft), new T16a/b (Qwen3 picker + chat
+  round-trip), T1 launcher list extended to include `start-img.bat`.
+
+### Housekeeping
+
+- **`usb-layout/` skeleton retired** — collapsed to a single
+  `docs/usb-layout.md` document with the current v0.10 tree diagram
+  and rationale. The empty placeholder dirs had drifted to v0.3
+  reality and were never used by `build-usb` (which `mkdir -p`s its
+  own paths). Build-script `./usb-layout` examples replaced with
+  generic tmp-dir examples.
 
 ---
 

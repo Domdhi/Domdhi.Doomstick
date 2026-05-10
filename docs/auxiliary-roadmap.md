@@ -105,13 +105,25 @@ at ~22.3 GB on top.
 
 | Tool | Default size | Port | Notes |
 |------|--------------|------|-------|
-| **age v1.3.1 + recovery vault** | ~25 MB total (3 per-OS native Go binaries, ~9 MB each) | n/a (CLI, no port) | Per-OS binaries at `ai-kit/age/{linux,mac,win}/`. User creates `vault/recovery.tar.age` via the documented ceremony; launcher `start-vault.{sh,command,bat}` decrypts to host tmpdir to preserve POSIX `0600` on SSH keys (exFAT can't store mode bits). Air-gapped from redbean — no HTTP surface, no `/vault/decrypt` endpoint. BSD-3 license, native Go (no Cosmopolitan APE polyglot, no Defender false-positive). Full ceremony walkthrough: [`docs/vault-guide.md`](vault-guide.md). On-USB short reference: `vault/README.txt`. KeePassXC Portable deferred to v0.10 — would force a Windows-only caveat that breaks the kit's same-files-everywhere axiom. |
+| **age v1.3.1 + recovery vault** | ~25 MB total (3 per-OS native Go binaries, ~9 MB each) | n/a (CLI, no port) | Per-OS binaries at `ai-kit/age/{linux,mac,win}/`. User creates `vault/recovery.tar.age` via the documented ceremony; launcher `start-vault.{sh,command,bat}` decrypts to host tmpdir to preserve POSIX `0600` on SSH keys (exFAT can't store mode bits). Air-gapped from redbean — no HTTP surface, no `/vault/decrypt` endpoint. BSD-3 license, native Go (no Cosmopolitan APE polyglot, no Defender false-positive). Full ceremony walkthrough: [`docs/vault-guide.md`](vault-guide.md). On-USB short reference: `vault/README.txt`. KeePassXC Portable deferred (no target version set — would force a Windows-only caveat that breaks the kit's same-files-everywhere axiom). |
 
 **Key decisions** (full rationale in [`docs/research/v0.9-vault-security-2026-05-09.md`](research/v0.9-vault-security-2026-05-09.md)):
 - Always-on (no `bundles.tsv` knob) — 25 MB doesn't warrant a wizard prompt; `DOOM_INCLUDE_VAULT=1` env-var override is the suppression hatch.
 - Decrypt to host tmpdir, NOT to USB — exFAT strips POSIX mode bits.
 - Passphrase-only default; YubiKey + FIDO2 ceremonies documented but not bundled (hardware-required ceremonies kill the "plug into a stranger's machine" axiom).
 - No auto-cleanup or auto-re-encrypt — both are footguns; cleanup is explicit.
+
+### v0.10 (2026-05-10) — offline image generation
+
+| Tool | Default size | Port | Notes |
+|------|--------------|------|-------|
+| **stable-diffusion.cpp `master-596-90e87bc` + FLUX.2 klein 4B Q4\_K\_M** | ~5.0 GB total (~60 MB per-OS sd-cli + libstable-diffusion + 2.43 GB transformer GGUF + 238 MB VAE safetensors + 2.33 GB Qwen3-4B text encoder) | n/a (CLI, no port) | Per-OS native binaries at `ai-kit/sd-img/{linux,mac,win}/`. FLUX.2 klein 4B Q4\_K\_M transformer GGUF + small-decoder VAE safetensors at `ai-kit/sd-img/models/`. Qwen3-4B Q4\_K\_M text encoder at `ai-kit/models/` — same file doubles as the lightest AI core option in `start.{sh,bat,command}` picker (runtime-detected menu choice [3]). Recipe: `sd-cli --diffusion-model … --vae … --llm … --steps 4 --cfg-scale 1.0 --sampling-method euler --diffusion-fa --offload-to-cpu` per [`sd.cpp/docs/flux2.md`](https://github.com/leejet/stable-diffusion.cpp/blob/master/docs/flux2.md). All Apache-2.0. Launcher `start-img.{sh,command,bat}` reads a prompt from stdin, writes a 1024×1024 PNG to the USB root. Standalone — no redbean coupling, no port allocated. ~1-3 min per image on CPU; ~8-10 GB working RAM (transformer + Qwen3 + VAE all loaded). Model pivoted from original SDXL Turbo Q4 plan (see rationale below). Full usage guide: [`docs/img-guide.md`](img-guide.md). |
+
+**Why FLUX.2 klein, not SDXL Turbo Q4?** The original pending entry specified SDXL Turbo Q4\_K\_M. At ship time, no Q4\_K\_M quantization of SDXL Turbo exists as a downloadable GGUF — the closest available is Q8\_0 at ~4 GB, and that file is distributed under the Stability AI Community License (registration required, no redistribution, no commercial use). FLUX.2 klein 4B (Black Forest Labs, January 2026) solves both problems: it has an Apache-2.0 license (clean for redistribution) and is supported by stable-diffusion.cpp since 2026-01-18. It is a 4-step distilled model with quality comparable to SDXL Turbo. The catch discovered during v0.10 verification: FLUX.2 is multi-file, NOT a single-file all-in-one — it needs a companion VAE (~238 MB) and a Qwen3-4B text encoder (~2.33 GB) supplied via `--vae` and `--llm` flags. Total image-gen footprint ~5 GB (transformer + VAE + Qwen3) versus SDXL Turbo Q8\_0's single 4 GB file, but the Qwen3 doubles as a kit-wide AI core option, recovering most of the size cost.
+
+**Launcher design decision:** `start-img` does not route through redbean. A single image generation blocks the process for 60-180 seconds; tying up the shared redbean instance for that window would stall DOOM saves, TTS, RAG queries, and journal writes for all other customers. The launcher invokes sd-cli directly as a subprocess and writes output to the USB root.
+
+**Bonus AI core option:** Because FLUX.2 klein's `--llm` flag wants a Qwen3-class encoder, the kit ships Qwen3-4B Q4\_K\_M (~2.33 GB) at `ai-kit/models/` rather than burying it inside `sd-img/`. The `start.{sh,bat,command}` AI core picker runtime-detects this file and offers it as a 3rd menu option (Gemma 4 E4B / Gemma 4 26B / Qwen3 4B). Hollama picks it up automatically via llamafile's `/v1/models`. Tiny/balanced bundles without image gen don't ship Qwen3 — picker gracefully shows 2 options.
 
 ---
 
@@ -121,26 +133,12 @@ Ranked by "value per gigabyte" given the prepper / off-grid framing.
 
 ---
 
-## Pending — medium payoff
-
-### 🥈 stable-diffusion.cpp + SDXL Turbo Q4 (~3 GB)
-
-Offline image generation. The `stable-diffusion.cpp` runtime is a small
-C++ binary (~5 MB), the model is the bulk. SDXL Turbo Q4_K_M is the
-sweet spot: good quality, ~3 GB, runs on CPU.
-
-**Why not yet:** the dashboard's prepper / survival framing doesn't
-naturally cover image gen — it's a "fun" tool more than a "knowledge in
-a tin" tool. Defer until v0.5 when we have the cockpit story sorted.
-
----
-
 ## Pending — lower payoff (nice-to-haves)
 
 | Item | Size | Notes |
 |------|------|-------|
 | **Project Gutenberg subset + Calibre Portable** | ~3 GB | A few thousand classic books. Calibre Portable is Win-only. Could ship .epub directly + recommend a portable reader per OS. |
-| **Static ffmpeg** | ~80 MB | Audio/video swiss-army. Pairs with whisperfile for live captions, with stable-diffusion for animated outputs. |
+| **Static ffmpeg** | ~80 MB | Audio/video swiss-army. Pairs with whisperfile for live captions, with `sd-img` for animated outputs. |
 | **Bigger Wikipedia ZIMs** | up to ~50 GB | The launcher already picks up any `zim/*.zim`. Add a build-script flag to fetch `wikipedia_en_top_nopic` (~6 GB) or the full `wikipedia_en_all_nopic` (~50 GB). |
 | **Multilingual Kiwix** | varies | Per-language ZIM selection. Build script needs a config knob. |
 | **Bootable rescue ISOs + Ventoy** | 5–20 GB | Currently BYO. Could pre-populate `iso/` and ship a Ventoy installer. |
@@ -221,12 +219,12 @@ pivoted from sqlite-vec to pure-Lua cosine over BLOB columns at Wave 0 D4
 
 ## Versioning notes
 
-The kit version (currently `v0.9`) ticks when a side-arm or platform
+The kit version (currently `v0.10`) ticks when a side-arm or platform
 batch ships. Recent cadence: v0.4 first side arms (2026-05-07) → v0.5
 redbean + DOOM + wizard (2026-05-07) → v0.6 USB-resident DOOM saves
 (2026-05-08) → v0.7 TTS via Sherpa-ONNX + Supertonic (2026-05-08) →
 v0.8 EmbeddingGemma RAG + chat tab (2026-05-09) → v0.9 age-encrypted
-recovery vault (2026-05-09).
+recovery vault (2026-05-09) → v0.10 offline image generation (2026-05-10).
 
 Side-arm sizes / URLs in `build-usb.{sh,ps1}` are pinned to a known
 release because:
@@ -245,7 +243,7 @@ multilingual variants exist but aren't in the wizard. See `TODO.md` "Build
 script & deploy bugs (closed)".
 
 If we add CI for the kit, the smoke test should run `build-usb` against
-`./usb-layout/` and verify all side arms launch and respond on their
+a tmp dir (e.g. `/tmp/doomstick-ci`) and verify all side arms launch and respond on their
 respective ports / open the expected pages. v0.7 adds a `/tts` smoke
 (POST text/plain → assert WAV magic header `RIFF...WAVE`); v0.6 adds a
 DOOM `/save` round-trip smoke.

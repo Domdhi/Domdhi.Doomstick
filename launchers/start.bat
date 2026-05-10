@@ -6,6 +6,12 @@ setlocal
 set "ROOT=%~dp0"
 set "PORT=8765"
 
+REM Qwen3-4B is the FLUX.2 klein text encoder (--llm flag of sd-cli) AND a
+REM standalone AI core option. Runtime-detected so tiny/balanced bundles that
+REM skip image gen don't see a broken menu entry.
+set "HAS_QWEN=0"
+if exist "%ROOT%ai-kit\models\Qwen3-4B-Q4_K_M.gguf" set "HAS_QWEN=1"
+
 :menu
 cls
 echo.
@@ -17,9 +23,16 @@ echo    Pick a model to load:
 echo.
 echo    [1]  Gemma 4 E4B   --   5 GB    needs 8+ GB RAM
 echo    [2]  Gemma 4 26B   --  17 GB   needs 18+ GB RAM  (MoE, surprisingly fast)
+if "%HAS_QWEN%"=="1" (
+  echo    [3]  Qwen3 4B      --  2.3 GB  needs 4+ GB RAM   ^(lightest, multilingual^)
+)
 echo.
 set "CHOICE="
-set /p "CHOICE=    Choose 1 or 2 (or close this window to cancel): "
+if "%HAS_QWEN%"=="1" (
+  set /p "CHOICE=    Choose 1, 2 or 3 (or close this window to cancel): "
+) else (
+  set /p "CHOICE=    Choose 1 or 2 (or close this window to cancel): "
+)
 
 if "%CHOICE%"=="1" (
   set "MODEL=gemma-4-E4B-it-Q4_K_M.gguf"
@@ -37,6 +50,21 @@ if "%CHOICE%"=="2" (
   set "POLL_SEC=3"
   set "LOAD_HINT=about 45-90 seconds"
   set "LOG=%ROOT%ai-kit\llamafile-26b.log"
+  goto run
+)
+if "%CHOICE%"=="3" (
+  if not "%HAS_QWEN%"=="1" (
+    echo.
+    echo    Invalid choice. Try again.
+    timeout /t 2 >nul
+    goto menu
+  )
+  set "MODEL=Qwen3-4B-Q4_K_M.gguf"
+  set "LABEL=Qwen3 4B"
+  set "WAIT_TRIES=45"
+  set "POLL_SEC=2"
+  set "LOAD_HINT=about 15-30 seconds"
+  set "LOG=%ROOT%ai-kit\llamafile-qwen3.log"
   goto run
 )
 echo.

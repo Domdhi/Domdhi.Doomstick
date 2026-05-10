@@ -6,6 +6,12 @@
 ROOT="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
 PORT=8765
 
+# Qwen3-4B is the FLUX.2 klein text encoder (--llm flag of sd-cli) AND a
+# standalone AI core option. Runtime-detected so tiny/balanced bundles that
+# skip image gen don't see a broken menu entry.
+HAS_QWEN=0
+[ -f "$ROOT/ai-kit/models/Qwen3-4B-Q4_K_M.gguf" ] && HAS_QWEN=1
+
 while :; do
   clear
   echo
@@ -17,8 +23,14 @@ while :; do
   echo
   echo "    [1]  Gemma 4 E4B   --   5 GB    needs 8+ GB RAM"
   echo "    [2]  Gemma 4 26B   --  17 GB   needs 18+ GB RAM  (MoE, surprisingly fast)"
+  if [ "$HAS_QWEN" = "1" ]; then
+    echo "    [3]  Qwen3 4B      --  2.3 GB  needs 4+ GB RAM   (lightest, multilingual)"
+    PROMPT_HINT="    Choose 1, 2 or 3 (or Ctrl-C to cancel): "
+  else
+    PROMPT_HINT="    Choose 1 or 2 (or Ctrl-C to cancel): "
+  fi
   echo
-  read -r -p "    Choose 1 or 2 (or Ctrl-C to cancel): " CHOICE
+  read -r -p "$PROMPT_HINT" CHOICE
 
   case "$CHOICE" in
     1)
@@ -37,6 +49,21 @@ while :; do
       POLL_SEC=3
       LOAD_HINT="about 45-90 seconds"
       LOG="$ROOT/ai-kit/llamafile-26b.log"
+      break
+      ;;
+    3)
+      if [ "$HAS_QWEN" != "1" ]; then
+        echo
+        echo "    Invalid choice. Try again."
+        sleep 1
+        continue
+      fi
+      MODEL="Qwen3-4B-Q4_K_M.gguf"
+      LABEL="Qwen3 4B"
+      WAIT_TRIES=45
+      POLL_SEC=2
+      LOAD_HINT="about 15-30 seconds"
+      LOG="$ROOT/ai-kit/llamafile-qwen3.log"
       break
       ;;
     *)

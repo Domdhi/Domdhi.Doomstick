@@ -23,7 +23,7 @@ LAYOUT
 
 USB root
 +-- index.html                       One-page dashboard for everything
-+-- start.bat / .command / .sh       AI launcher (Gemma 4 model-picker)
++-- start.bat / .command / .sh       AI launcher (Gemma 4 + Qwen3 picker)
 +-- start-whisper.{bat,command,sh}   Whisperfile (audio -> text, port 8766)
 +-- start-wiki.{bat,command,sh}      Kiwix (offline Wikipedia, port 8767)
 +-- start-ocr.{bat,command,sh}       OCR (image -> text, browser only)
@@ -32,6 +32,7 @@ USB root
 |
 +-- start-embed.{bat,command,sh}     Embedding side-arm (port 8769; for RAG)
 +-- start-vault.{bat,command,sh}     Recovery vault decrypt (port-free)
++-- start-img.{bat,command,sh}       Field sketch generator (sd.cpp + FLUX)
 +-- chat\                            Hollama chat tab (file://, AI + RAG + journal)
 +-- workspace\                       Per-workspace docs/ + journal/ folders (RAG corpus)
 |
@@ -42,6 +43,7 @@ USB root
 |   +-- models\
 |   |   +-- gemma-4-E4B-it-Q4_K_M.gguf            Daily driver  (~5 GB)
 |   |   +-- gemma-4-26B-A4B-it-UD-Q4_K_M.gguf     Big brain MoE (~17 GB)
+|   |   +-- Qwen3-4B-Q4_K_M.gguf                  Lightest LLM + FLUX.2 encoder (~2.33 GB)
 |   |   +-- embeddinggemma-300m-qat-Q8_0.gguf     Embeddings (RAG/search)
 |   +-- whisper\
 |   |   +-- whisper-base.en.llamafile             Whisperfile (~148 MB)
@@ -55,6 +57,10 @@ USB root
 |   |   +-- models\supertonic\                     Supertonic int8 ONNX (~120 MB)
 |   +-- age\
 |   |   +-- linux\, mac\, win\                     age binary per OS (~9 MB each)
+|   +-- sd-img\                             stable-diffusion.cpp + FLUX.2 klein
+|   |   +-- linux\, mac\, win\              sd-cli + libstable-diffusion per OS (~30-50 MB each)
+|   |   +-- models\flux-2-klein-4b-Q4_K_M.gguf            FLUX.2 klein transformer (~2.43 GB)
+|   |   +-- models\full_encoder_small_decoder.safetensors FLUX.2 small-decoder VAE (~238 MB)
 |   +-- *.log                       Created on first run of each tool
 |
 +-- zim\                             Wikipedia ZIM file(s) for kiwix-serve
@@ -78,8 +84,9 @@ A menu appears:
 
   [1]  Gemma 4 E4B   --   5 GB    needs 8+ GB RAM
   [2]  Gemma 4 26B   --  17 GB   needs 18+ GB RAM (MoE, surprisingly fast)
+  [3]  Qwen3 4B      --  2.3 GB  needs 4+ GB RAM  (lightest, only if image gen built)
 
-Pick a number. The model loads in ~15-30 s (E4B) or ~45-90 s (26B). A
+Pick a number. The model loads in ~15-30 s (E4B/Qwen3) or ~45-90 s (26B). A
 browser tab opens at http://127.0.0.1:8765 with the chat UI. Press any
 key in the launcher window to stop the model.
 
@@ -193,6 +200,14 @@ SIDE ARMS (shipped with the kit)
                                     vault/recovery.tar.age to a
                                     host tmpdir. See vault/README.txt
                                     for the creation ceremony.
+
+  start-img.{bat,command,sh}        Offline image gen. Type a prompt,
+                                    get a 1024x1024 PNG. ~1-3 min on
+                                    CPU; stops nothing automatically
+                                    but needs ~8-10 GB working RAM
+                                    (loads transformer + Qwen3-4B
+                                    text encoder + VAE all together).
+                                    See docs/img-guide.md.
 
   chat\index.html                   Vendored Hollama 0.35.4 chat UI with
                                     workspace/RAG/journal/session adapters.

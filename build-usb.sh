@@ -36,14 +36,15 @@ Usage:
 Examples:
   $0 /mnt/usb                    Linux: wizard, then build
   $0 /Volumes/USB                macOS
-  $0 ./usb-layout                Local dry-run target
+  $0 /tmp/doomstick-test         Local dry-run target (any writable dir)
   $0 -y /mnt/usb                 CI / scripted builds
 
 Defaults / 'full' bundle download size:
   AI core    ~22.3 GB   (43 MB runtime + 5 GB E4B + 17 GB 26B + 329 MB embed)
   Side arms  ~ 910 MB   (whisperfile small.en + kiwix + simple-en zim + tesseract + monaco pbf)
   TTS        ~ 210 MB   (sherpa-onnx per-OS + Supertonic int8 model)
-  Total      ~23.3 GB
+  Image gen  ~ 2.6 GB   (sd.cpp per-OS + FLUX.2 klein 4B Q4_K_M)
+  Total      ~28.5 GB   (full; ~23.3 GB without image gen)
 
 Re-runs skip files already present with the right size.
 EOF
@@ -109,6 +110,7 @@ apply_baked_defaults() {
   DOOM_INCLUDE_REDBEAN=1
   DOOM_INCLUDE_DOOM=1
   DOOM_INCLUDE_TTS=1
+  DOOM_INCLUDE_IMG=1
 }
 
 # ---------------------------------------------------------------- TSV loader
@@ -292,10 +294,10 @@ apply_bundle() {
   done
   [ "$found" -ge 0 ] || { echo "error: unknown bundle '$name'" >&2; exit 2; }
   local row="${TSV_FIELDS[$found]}"
-  # Schema (post v0.7):
+  # Schema (post v0.10):
   #   1 label  2 e4b  3 moe  4 emb  5 wiki  6 osm  7 whisper  8 ocr  9 docs
-  #   10 redbean  11 doom  12 tts  13 zim_idx  14 osm_idx  15 whisper_idx
-  #   16 est  17 summary
+  #   10 redbean  11 doom  12 tts  13 img  14 zim_idx  15 osm_idx  16 whisper_idx
+  #   17 est  18 summary
   DOOM_INCLUDE_E4B="$(tsv_field "$row" 2)"
   DOOM_INCLUDE_MOE="$(tsv_field "$row" 3)"
   DOOM_INCLUDE_EMB="$(tsv_field "$row" 4)"
@@ -307,10 +309,11 @@ apply_bundle() {
   DOOM_INCLUDE_REDBEAN="$(tsv_field "$row" 10)"
   DOOM_INCLUDE_DOOM="$(tsv_field "$row" 11)"
   DOOM_INCLUDE_TTS="$(tsv_field "$row" 12)"
+  DOOM_INCLUDE_IMG="$(tsv_field "$row" 13)"
   local zim_idx osm_idx whisper_idx
-  zim_idx="$(tsv_field "$row" 13)"
-  osm_idx="$(tsv_field "$row" 14)"
-  whisper_idx="$(tsv_field "$row" 15)"
+  zim_idx="$(tsv_field "$row" 14)"
+  osm_idx="$(tsv_field "$row" 15)"
+  whisper_idx="$(tsv_field "$row" 16)"
 
   # Resolve indices into URL/FILE/BYTES via the per-thing TSVs.
   if [ "$DOOM_INCLUDE_WIKI" = "1" ] && [ "$zim_idx" -ge 1 ]; then
@@ -498,6 +501,13 @@ run_wizard() {
   else
     DOOM_INCLUDE_TTS=0
   fi
+
+  # 10. Image gen — sd.cpp + FLUX.2 klein 4B Q4_K_M
+  if prompt_yes_no "Include offline image gen (sd.cpp + FLUX.2 klein 4B Q4, ~2.6 GB)?" "N"; then
+    DOOM_INCLUDE_IMG=1
+  else
+    DOOM_INCLUDE_IMG=0
+  fi
 }
 
 # ---------------------------------------------------------------- estimate / free space
@@ -521,6 +531,7 @@ estimate_total_bytes() {
   [ "${DOOM_INCLUDE_REDBEAN:-0}" = "1" ] && total=$((total + 5500000))    # redbean.com
   [ "${DOOM_INCLUDE_DOOM:-0}" = "1" ]    && total=$((total + 7500000))    # Dwasm bundle ~3.2 MB + DOOM1.WAD ~4.2 MB
   [ "${DOOM_INCLUDE_TTS:-0}" = "1" ]     && total=$((total + 210000000))  # sherpa runtime (3× ~30 MB) + Supertonic int8 (~120 MB)
+  [ "${DOOM_INCLUDE_IMG:-0}" = "1" ]     && total=$((total + 2646469190)) # sd.cpp 3-OS (42 MB) + FLUX.2 klein 4B Q4_K_M (~2.6 GB)
   printf '%s' "$total"
 }
 
@@ -550,6 +561,7 @@ print_summary_and_confirm() {
   printf "  %-12s %s\n" "redbean:"   "$( [ "${DOOM_INCLUDE_REDBEAN:-0}" = "1" ] && echo 'included (port 8768)' || echo '(skipped)')"
   printf "  %-12s %s\n" "DOOM:"      "$( [ "${DOOM_INCLUDE_DOOM:-0}" = "1" ] && echo 'included (Dwasm + shareware WAD)' || echo '(skipped)')"
   printf "  %-12s %s\n" "TTS:"       "$( [ "${DOOM_INCLUDE_TTS:-0}" = "1" ] && echo 'included (Sherpa-ONNX + Supertonic int8)' || echo '(skipped)')"
+  printf "  %-12s %s\n" "Img gen:"   "$( [ "${DOOM_INCLUDE_IMG:-0}" = "1" ] && echo 'included (sd.cpp + FLUX.2 klein 4B Q4_K_M)' || echo '(skipped)')"
   echo
   printf "  Estimated download: %s\n" "$(human_bytes "$needed")"
   if [ "$free" -gt 0 ]; then
@@ -605,6 +617,7 @@ DOOM_INCLUDE_DOCS=${DOOM_INCLUDE_DOCS}
 DOOM_INCLUDE_REDBEAN=${DOOM_INCLUDE_REDBEAN:-0}
 DOOM_INCLUDE_DOOM=${DOOM_INCLUDE_DOOM:-0}
 DOOM_INCLUDE_TTS=${DOOM_INCLUDE_TTS:-0}
+DOOM_INCLUDE_IMG=${DOOM_INCLUDE_IMG:-0}
 EOF
   echo "  [save] wrote config: $path"
 }
@@ -663,6 +676,10 @@ mkdir -p \
   "$TARGET/ai-kit/sherpa-tts/mac" \
   "$TARGET/ai-kit/sherpa-tts/win" \
   "$TARGET/ai-kit/sherpa-tts/models/supertonic" \
+  "$TARGET/ai-kit/sd-img/linux" \
+  "$TARGET/ai-kit/sd-img/mac" \
+  "$TARGET/ai-kit/sd-img/win" \
+  "$TARGET/ai-kit/sd-img/models" \
   "$TARGET/zim" \
   "$TARGET/maps" \
   "$TARGET/ocr/lib" \
@@ -929,7 +946,8 @@ if [ "${DOOM_INCLUDE_TTS:-0}" = "1" ]; then
   echo "==> tts (sherpa-onnx + supertonic)"
 
   # Linux runtime — multi-file shared tarball. Extract to ai-kit/sherpa-tts/linux/.
-  if [ ! -x "$TARGET/ai-kit/sherpa-tts/linux/sherpa-onnx-offline-tts" ]; then
+  # -f not -x: exFAT without metadata mount option strips execute bits.
+  if [ ! -f "$TARGET/ai-kit/sherpa-tts/linux/sherpa-onnx-offline-tts" ]; then
     SHERPA_LINUX_TBZ="$TARGET/ai-kit/sherpa-tts/linux/sherpa-onnx.tar.bz2"
     fetch "$SHERPA_LINUX_URL" "$SHERPA_LINUX_TBZ" "$SHERPA_LINUX_BYTES" "sherpa-onnx ${SHERPA_VERSION} linux-x64"
     tar -xjf "$SHERPA_LINUX_TBZ" -C "$TARGET/ai-kit/sherpa-tts/linux" --strip-components=1
@@ -946,7 +964,7 @@ if [ "${DOOM_INCLUDE_TTS:-0}" = "1" ]; then
   fi
 
   # macOS runtime — same shape as Linux. arm64 only for now (M-series).
-  if [ ! -x "$TARGET/ai-kit/sherpa-tts/mac/sherpa-onnx-offline-tts" ]; then
+  if [ ! -f "$TARGET/ai-kit/sherpa-tts/mac/sherpa-onnx-offline-tts" ]; then
     SHERPA_MAC_TBZ="$TARGET/ai-kit/sherpa-tts/mac/sherpa-onnx.tar.bz2"
     fetch "$SHERPA_MAC_URL" "$SHERPA_MAC_TBZ" "$SHERPA_MAC_BYTES" "sherpa-onnx ${SHERPA_VERSION} osx-arm64"
     tar -xjf "$SHERPA_MAC_TBZ" -C "$TARGET/ai-kit/sherpa-tts/mac" --strip-components=1
@@ -991,6 +1009,106 @@ if [ "${DOOM_INCLUDE_TTS:-0}" = "1" ]; then
     fetch "$SUPERTONIC_URL" "$SUPERTONIC_TBZ" "$SUPERTONIC_BYTES" "Supertonic int8 (~120 MB)"
     tar -xjf "$SUPERTONIC_TBZ" -C "$TARGET/ai-kit/sherpa-tts/models/supertonic" --strip-components=1
     rm -f "$SUPERTONIC_TBZ"
+  fi
+fi
+
+# ---------------------------------------------------------------- image gen (sd.cpp + flux.2 klein)
+
+# stable-diffusion.cpp runtime + FLUX.2 klein 4B Q4_K_M model. v0.10 standalone
+# launcher (start-img.{sh,bat,command}) — NOT a redbean route (60-180s blocking
+# image gen would DoS every other 8768 customer). Native C++ binaries per OS,
+# no Python on host. sd.cpp uses rolling master-N-sha tags, NOT semver.
+IMG_VERSION="master-596-90e87bc"
+IMG_LINUX_URL="https://github.com/leejet/stable-diffusion.cpp/releases/download/${IMG_VERSION}/sd-master-90e87bc-bin-Linux-Ubuntu-24.04-x86_64.zip"
+IMG_MAC_URL="https://github.com/leejet/stable-diffusion.cpp/releases/download/${IMG_VERSION}/sd-master-90e87bc-bin-Darwin-macOS-15.7.4-arm64.zip"
+IMG_WIN_URL="https://github.com/leejet/stable-diffusion.cpp/releases/download/${IMG_VERSION}/sd-master-90e87bc-bin-win-avx2-x64.zip"
+IMG_LINUX_BYTES=11560677
+IMG_MAC_BYTES=21432078
+IMG_WIN_BYTES=9165331
+
+# FLUX.2 klein 4B Q4_K_M — Black Forest Labs (Jan 2026), Apache-2.0. Transformer-
+# only GGUF (~2.6 GB). NOT all-in-one: sd.cpp needs companion VAE (--vae) +
+# Qwen3-4B text encoder (--llm) supplied separately. See sd.cpp docs/flux2.md.
+IMG_MODEL_URL="https://huggingface.co/unsloth/FLUX.2-klein-4B-GGUF/resolve/main/flux-2-klein-4b-Q4_K_M.gguf"
+IMG_MODEL_BYTES=2604311104
+IMG_MODEL_FILENAME="flux-2-klein-4b-Q4_K_M.gguf"
+
+# Qwen3-4B Q4_K_M — Apache-2.0 (Alibaba/Qwen). Doubles as FLUX.2 klein text
+# encoder (sd.cpp --llm flag) AND a standalone AI core option in start.{sh,bat,
+# command} picker (runtime-detected). Lives at ai-kit/models/ alongside Gemma
+# weights, NOT inside sd-img/ — shared resource. ~2.33 GB.
+IMG_LLM_URL="https://huggingface.co/unsloth/Qwen3-4B-GGUF/resolve/main/Qwen3-4B-Q4_K_M.gguf?download=true"
+IMG_LLM_BYTES=2497281312
+IMG_LLM_FILENAME="Qwen3-4B-Q4_K_M.gguf"
+
+# FLUX.2 small-decoder VAE — Black Forest Labs, Apache-2.0. Ungated alternative
+# to the gated FLUX.2-dev VAE. ~238 MB.
+IMG_VAE_URL="https://huggingface.co/black-forest-labs/FLUX.2-small-decoder/resolve/main/full_encoder_small_decoder.safetensors?download=true"
+IMG_VAE_BYTES=249519092
+IMG_VAE_FILENAME="full_encoder_small_decoder.safetensors"
+
+if [ "${DOOM_INCLUDE_IMG:-0}" = "1" ]; then
+  echo
+  echo "==> image gen (sd.cpp ${IMG_VERSION} + FLUX.2 klein)"
+
+  # Linux runtime — .zip with files at root (sd-cli + libstable-diffusion.so + sd-server + *.txt).
+  # Two-file guard: binary AND shared lib must be present (catches partial-extraction failures).
+  # Use -f not -x: exFAT without metadata mount option strips execute bits, so -x would
+  # evaluate false on a freshly-extracted binary and trigger needless re-fetch.
+  if [ ! -f "$TARGET/ai-kit/sd-img/linux/sd-cli" ] || [ ! -f "$TARGET/ai-kit/sd-img/linux/libstable-diffusion.so" ]; then
+    SD_LINUX_ZIP="/tmp/sd-linux.zip"
+    fetch "$IMG_LINUX_URL" "$SD_LINUX_ZIP" "$IMG_LINUX_BYTES" "sd.cpp ${IMG_VERSION} linux-x64"
+    if command -v unzip >/dev/null 2>&1; then
+      unzip -o "$SD_LINUX_ZIP" -d "$TARGET/ai-kit/sd-img/linux" >/dev/null
+      chmod +x "$TARGET/ai-kit/sd-img/linux/sd-cli" 2>/dev/null || true
+      rm -f "$SD_LINUX_ZIP"
+    else
+      echo "  [warn] unzip not available; leaving $SD_LINUX_ZIP for manual extraction"
+    fi
+  fi
+
+  # macOS runtime — same shape as Linux. arm64 only.
+  if [ ! -f "$TARGET/ai-kit/sd-img/mac/sd-cli" ] || [ ! -f "$TARGET/ai-kit/sd-img/mac/libstable-diffusion.dylib" ]; then
+    SD_MAC_ZIP="/tmp/sd-mac.zip"
+    fetch "$IMG_MAC_URL" "$SD_MAC_ZIP" "$IMG_MAC_BYTES" "sd.cpp ${IMG_VERSION} osx-arm64"
+    if command -v unzip >/dev/null 2>&1; then
+      unzip -o "$SD_MAC_ZIP" -d "$TARGET/ai-kit/sd-img/mac" >/dev/null
+      chmod +x "$TARGET/ai-kit/sd-img/mac/sd-cli" 2>/dev/null || true
+      rm -f "$SD_MAC_ZIP"
+    else
+      echo "  [warn] unzip not available; leaving $SD_MAC_ZIP for manual extraction"
+    fi
+  fi
+
+  # Windows runtime — .zip with sd-cli.exe + stable-diffusion.dll + sd-server.exe + *.txt at root.
+  # Files-at-root means no flatten/--strip-components needed.
+  if [ ! -f "$TARGET/ai-kit/sd-img/win/sd-cli.exe" ] || [ ! -f "$TARGET/ai-kit/sd-img/win/stable-diffusion.dll" ]; then
+    SD_WIN_ZIP="/tmp/sd-win.zip"
+    fetch "$IMG_WIN_URL" "$SD_WIN_ZIP" "$IMG_WIN_BYTES" "sd.cpp ${IMG_VERSION} win-avx2-x64"
+    if command -v unzip >/dev/null 2>&1; then
+      unzip -o "$SD_WIN_ZIP" -d "$TARGET/ai-kit/sd-img/win" >/dev/null
+      rm -f "$SD_WIN_ZIP"
+    else
+      echo "  [warn] unzip not available; leaving $SD_WIN_ZIP for manual extraction"
+    fi
+  fi
+
+  # FLUX.2 klein 4B Q4_K_M transformer GGUF — 2.6 GB. NOT all-in-one (see comment
+  # block above). VAE + text-encoder companions fetched below.
+  if [ ! -f "$TARGET/ai-kit/sd-img/models/$IMG_MODEL_FILENAME" ]; then
+    fetch "$IMG_MODEL_URL" "$TARGET/ai-kit/sd-img/models/$IMG_MODEL_FILENAME" "$IMG_MODEL_BYTES" "FLUX.2 klein 4B Q4_K_M (~2.6 GB)"
+  fi
+
+  # FLUX.2 small-decoder VAE companion — required for sd.cpp --vae flag.
+  if [ ! -f "$TARGET/ai-kit/sd-img/models/$IMG_VAE_FILENAME" ]; then
+    fetch "$IMG_VAE_URL" "$TARGET/ai-kit/sd-img/models/$IMG_VAE_FILENAME" "$IMG_VAE_BYTES" "FLUX.2 small-decoder VAE (~238 MB)"
+  fi
+
+  # Qwen3-4B Q4_K_M text encoder + AI core option — required for sd.cpp --llm
+  # flag. Lives at ai-kit/models/ so start.{sh,bat,command} can detect it as
+  # a 3rd AI core menu option (E4B / 26B / Qwen3-4B).
+  if [ ! -f "$TARGET/ai-kit/models/$IMG_LLM_FILENAME" ]; then
+    fetch "$IMG_LLM_URL" "$TARGET/ai-kit/models/$IMG_LLM_FILENAME" "$IMG_LLM_BYTES" "Qwen3-4B Q4_K_M (~2.33 GB) — FLUX.2 text encoder + AI core option"
   fi
 fi
 
@@ -1059,7 +1177,7 @@ cp "$REPO/launchers/start.sh"      "$TARGET/start.sh"
 
 # Side-arm launchers — copied unconditionally so the USB layout is consistent;
 # launchers themselves print a clear error if the underlying data isn't present.
-for tool in whisper wiki ocr docs doom embed vault; do
+for tool in whisper wiki ocr docs doom embed vault img; do
   cp "$REPO/launchers/start-$tool.bat"     "$TARGET/start-$tool.bat"
   cp "$REPO/launchers/start-$tool.command" "$TARGET/start-$tool.command"
   cp "$REPO/launchers/start-$tool.sh"      "$TARGET/start-$tool.sh"

@@ -944,7 +944,7 @@ body.mobile-mode .terminal-action { padding: 14px 22px; }
   <div class="ebs-bar">
     <span class="ebs-mark" aria-hidden="true">☢</span>
     <span class="ebs-title">Doomstick · Offline Emergency Assistance Network</span>
-    <span class="ebs-meta">v0·9·0 / 2026·05·09 / 127.0.0.1:8765</span>
+    <span class="ebs-meta">v0·10·0 / 2026·05·10 / 127.0.0.1:8765</span>
   </div>
   <div class="ebs-stripes" aria-hidden="true"></div>
 </div>
@@ -960,7 +960,7 @@ body.mobile-mode .terminal-action { padding: 14px 22px; }
       <span class="sep">/</span>
       <span>cpu-only</span>
       <span class="sep">/</span>
-      <span>22.6 GB on stick</span>
+      <span>28.5 GB on stick</span>
     </div>
     <h1 class="doomstick">DOOMSTICK</h1>
     <p class="doomstick-tagline">Portable Offline AI Kit · For when the grid is down</p>
@@ -1161,7 +1161,7 @@ body.mobile-mode .terminal-action { padding: 14px 22px; }
 
 <section>
   <h2 class="section-title"><span class="num">§03</span>Payload Manifest</h2>
-  <p class="section-lede">Three weights ship with the kit. Two appear in the launcher menu; the third is for retrieval, not chat.</p>
+  <p class="section-lede">Four weights ship with the kit. Three appear in the launcher menu; the fourth is for retrieval, not chat. Qwen3 4B does double duty as the FLUX.2 klein text encoder for image gen and as a standalone AI core option.</p>
 
   <div class="grid grid-3 stagger">
 
@@ -1198,6 +1198,24 @@ body.mobile-mode .terminal-action { padding: 14px 22px; }
         </dl>
         <p class="weapon-brief">Mixture-of-Experts. Stronger reasoning and longer-context recall — only the active experts run per token, so it's faster than its file size suggests.</p>
         <span class="stamp amber">HEAVY&nbsp;ORDNANCE</span>
+      </div>
+    </article>
+
+    <article class="weapon">
+      <header class="weapon-header">
+        <span class="callsign">CALLSIGN</span>
+        <span class="codename">QWEN3 / 4B</span>
+      </header>
+      <div class="weapon-body">
+        <dl class="weapon-specs">
+          <dt>PARAMS</dt><dd>4 B</dd>
+          <dt>SIZE</dt><dd>2.33 GB</dd>
+          <dt>RAM&nbsp;MIN</dt><dd>≥ 4 GB</dd>
+          <dt>SPEED</dt><dd>~20 t/s on CPU</dd>
+          <dt>QUANT</dt><dd>Q4_K_M · Apache-2.0</dd>
+        </dl>
+        <p class="weapon-brief">Lightest AI core option (menu choice [3]). Multilingual, fast cold-load. Doubles as FLUX.2 klein's text encoder via sd-cli's <code>--llm</code> flag — same file, two uses.</p>
+        <span class="stamp green">DUAL&nbsp;PURPOSE</span>
       </div>
     </article>
 
@@ -1401,6 +1419,48 @@ body.mobile-mode .terminal-action { padding: 14px 22px; }
         <code>tar c recovery/ | ai-kit/age/linux/age -p &gt; vault/recovery.tar.age</code>.
       </p>
       <a class="terminal-action" href="vault/README.txt">Open README</a>
+    </article>
+
+  </div>
+</section>
+
+<!-- ============== §08 FIELD SKETCH GENERATOR (DESKTOP) ============== -->
+
+<section class="desktop-only">
+  <h2 class="section-title"><span class="num">§08</span>Field Sketch Generator</h2>
+  <p class="section-lede">
+    Offline image generation via FLUX.2 klein 4B — a compact diffusion model that runs
+    entirely on CPU without a GPU. Run <code>start-img</code>, type a prompt at the CLI, get a
+    1024×1024 PNG saved to the USB root.
+    <strong>~1-3 minutes per image on CPU. Needs ~8-10 GB working RAM. Stop the AI core first on 8 GB hosts.</strong>
+  </p>
+
+  <div class="grid grid-2">
+
+    <article class="terminal">
+      <span class="terminal-tag">▸ IMG·GEN</span>
+      <h3 class="terminal-name">Field Sketch Generator</h3>
+      <p class="terminal-desc">
+        One-shot CLI launcher: type a prompt, wait, get a PNG at <code>img-out-YYYYMMDD-HHMMSS.png</code>
+        on the USB root. No port, no server, no redbean route — sd-cli runs once per image and exits.
+        Uses <code>start-img.bat</code> / <code>start-img.sh</code> / <code>start-img.command</code>.
+        Powered by FLUX.2 klein 4B (Apache-2.0). v0.10+.
+      </p>
+      <code class="terminal-cmd" data-cmd-for="start-img.bat">start-img.bat</code>
+      <button class="terminal-action" type="button" data-copy-path="start-img.bat">Copy Path</button>
+    </article>
+
+    <article class="terminal">
+      <span class="terminal-tag">▸ IMG·SETUP</span>
+      <h3 class="terminal-name">Model &amp; Runtime</h3>
+      <p class="terminal-desc">
+        FLUX.2 klein is multi-file: <code>flux-2-klein-4b-Q4_K_M.gguf</code> (2.43 GB transformer) +
+        <code>full_encoder_small_decoder.safetensors</code> (238 MB VAE) at <code>ai-kit/sd-img/models/</code>,
+        plus <code>Qwen3-4B-Q4_K_M.gguf</code> (2.33 GB text encoder) at <code>ai-kit/models/</code> —
+        the same Qwen3 that's a 3rd AI core menu option. All Apache-2.0. Fetched by
+        <code>build-usb</code>. Recipe per <a href="https://github.com/leejet/stable-diffusion.cpp/blob/master/docs/flux2.md" target="_blank" rel="noopener">sd.cpp/docs/flux2.md</a>.
+      </p>
+      <a class="terminal-action" href="https://huggingface.co/unsloth/FLUX.2-klein-4B-GGUF" target="_blank" rel="noopener">View Model Card</a>
     </article>
 
   </div>

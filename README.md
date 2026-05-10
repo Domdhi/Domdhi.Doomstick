@@ -15,7 +15,7 @@ This repo is the **build recipe**, not the kit itself. Cloning gives you the
 launcher scripts, the dashboard, args files, and a `build-usb.sh` /
 `build-usb.ps1` that downloads the runtime and weights from upstream and
 assembles the full USB layout for you. You supply the USB and the bandwidth
-(~22 GB of downloads); the script does the rest.
+(~28 GB of downloads for the full bundle); the script does the rest.
 
 <p>
 <img alt="License" src="https://img.shields.io/badge/license-Apache_2.0-fcd000?style=for-the-badge&labelColor=0a0a08" />
@@ -57,7 +57,7 @@ assembles the full USB layout for you. You supply the USB and the bandwidth
 
   ☢  EMERGENCY BROADCAST · OFFLINE EMERGENCY ASSISTANCE NETWORK  ☣
 
-      CLASSIFICATION  ▸  PUBLIC               DOOMSTICK · v0.9.0 · 2026·05·09
+      CLASSIFICATION  ▸  PUBLIC               DOOMSTICK · v0.10.0 · 2026·05·10
       TRANSMISSION    ▸  OFFLINE              COSMOPOLITAN · CPU-ONLY · USB
       AUTH            ▸  Apache-2.0 + GPL     ENDPOINT · 127.0.0.1 : 8765
 
@@ -112,8 +112,8 @@ This is a recipe — large binary artifacts (model weights, ISOs) live upstream 
 ├── docs-offline/           DevDocs landing zone (manual setup)
 ├── docs/
 │   ├── auxiliary-roadmap.md     What's shipped, what's pending
+│   ├── usb-layout.md            What the deployed USB tree looks like
 │   └── setup-devdocs.md         Manual DevDocs walkthrough
-├── usb-layout/             Empty skeleton showing the target USB structure
 ├── LICENSE                 Apache-2.0
 └── README.md               This file
 ```
@@ -121,7 +121,7 @@ This is a recipe — large binary artifacts (model weights, ISOs) live upstream 
 **What `build-usb.sh /mnt/usb` produces:**
 
 ```
-/mnt/usb/                                       ~22.7 GB total
+/mnt/usb/                                       ~28.5 GB total
 ├── 📄 index.html                     One-page dashboard. Open this first.
 ├── 🚀 start.bat                       Windows AI launcher (model picker + chat tab)
 ├── 🚀 start.command                   macOS AI launcher
@@ -133,6 +133,7 @@ This is a recipe — large binary artifacts (model weights, ISOs) live upstream 
 ├── 🚀 start-doom.{bat,command,sh}     DOOM via redbean (port 8768)
 ├── 🚀 start-embed.{bat,command,sh}    Embedding side-arm for RAG (port 8769, v0.8+)
 ├── 🚀 start-vault.{bat,command,sh}    Vault decrypt (age, prints cleanup reminder)
+├── 🎨 start-img.{bat,command,sh}      Field sketch generator (sd.cpp + FLUX)
 ├── 📜 README.txt                      Short version of this doc
 ├── 💬 chat/                           Vendored Hollama chat tab (file://, v0.8+)
 ├── 📓 workspace/<name>/docs/, journal/  Per-workspace RAG corpus (v0.8+)
@@ -144,6 +145,7 @@ This is a recipe — large binary artifacts (model weights, ISOs) live upstream 
 │   ├── models/
 │   │   ├── gemma-4-E4B-it-Q4_K_M.gguf            5 GB,  daily driver
 │   │   ├── gemma-4-26B-A4B-it-UD-Q4_K_M.gguf    17 GB, big brain MoE
+│   │   ├── Qwen3-4B-Q4_K_M.gguf                 2.33 GB, lightest LLM + FLUX.2 encoder (v0.10+)
 │   │   └── embeddinggemma-300m-qat-Q8_0.gguf    329 MB, powers v0.8 RAG (live)
 │   ├── whisper/
 │   │   └── whisper-small.en.llamafile           497 MB, audio → text
@@ -157,8 +159,12 @@ This is a recipe — large binary artifacts (model weights, ISOs) live upstream 
 │   ├── sherpa-tts/
 │   │   ├── linux/, mac/, win/                     sherpa-onnx-offline-tts per OS (~30 MB each)
 │   │   └── models/supertonic/                     Supertonic int8 ONNX bundle (~120 MB)
-│   └── age/
-│       ├── linux/, mac/, win/         age binary per OS (~9 MB each)
+│   ├── age/
+│   │   ├── linux/, mac/, win/         age binary per OS (~9 MB each)
+│   └── sd-img/
+│       ├── linux/, mac/, win/                            sd-cli + libstable-diffusion per OS
+│       ├── models/flux-2-klein-4b-Q4_K_M.gguf            FLUX.2 klein transformer (~2.43 GB)
+│       └── models/full_encoder_small_decoder.safetensors FLUX.2 small-decoder VAE (~238 MB)
 │
 ├── 📚 zim/wikipedia_en_simple_all_nopic_2024-06.zim   ~395 MB (default)
 ├── 🔤 ocr/                            tesseract.js + eng pack    ~15 MB
@@ -175,7 +181,7 @@ This is a recipe — large binary artifacts (model weights, ISOs) live upstream 
 - Bootable rescue ISOs (Ubuntu / SystemRescue / Hiren's BootCD PE) + [Ventoy](https://www.ventoy.net/)
 - Portable Windows tools (PortableGit, VS Code Portable, ripgrep, fzf, jq, 7-Zip)
 - Piper TTS (text → audio, completes the voice stack with whisperfile)
-- stable-diffusion.cpp (offline image generation), ffmpeg, …
+- ffmpeg (media swiss-army knife), …
 
 These and more are tracked in [`docs/auxiliary-roadmap.md`](docs/auxiliary-roadmap.md) — most are one-line additions to the build script when you feel like it.
 
@@ -204,7 +210,7 @@ The first run opens an **interactive wizard**: pick a bundle (`tiny / balanced /
 |-------------|----------|-------------------------------------------------------------------------------------------|
 | `tiny`      | ~5.4 GB  | E4B model + Simple-English Wikipedia. No maps, no voice, no DOOM, no TTS. Smallest useful. |
 | `balanced`  | ~6.1 GB  | E4B + Embedding + Simple Wikipedia + Monaco maps + all side-arms + redbean + DOOM + TTS.   |
-| `full`      | ~22.9 GB | Everything (3 models + side-arms + redbean + DOOM + TTS). Matches `-y` non-interactive defaults. |
+| `full`      | ~28.5 GB | Everything — all four models (E4B + 26B + EmbedGemma + Qwen3-4B) + side-arms + redbean + DOOM + TTS + image gen (FLUX.2 klein + VAE + Qwen3 encoder). Matches `-y` non-interactive defaults. |
 
 **Modes:**
 
@@ -421,6 +427,24 @@ tar c recovery/ | ../ai-kit/age/linux/age -p &gt; recovery.tar.age</code></pre>
 Either the passphrase was wrong, or the vault was encrypted to an identity file that's not on the decrypt host (Ceremony 2/3 in <a href="docs/vault-guide.md">docs/vault-guide.md</a>). Check: did you encrypt with <code>age -p</code> (passphrase) or <code>age -r</code> (recipient)? The default ceremony is <code>-p</code> — if you used <code>-r</code>, you need <code>age -d -i &lt;identity-file&gt;</code> instead of the launcher's pure-passphrase prompt. The tmpdir is auto-cleaned on decrypt failure (no partial extracts).
 </details>
 
+<details>
+<summary><b>Image gen: "sd-cli not found" / launcher exits immediately</b></summary>
+<br>
+The <code>ai-kit/sd-img/</code> directory is empty or missing — the image-gen binaries are fetched by the build script, not committed to the repo. Run <code>build-usb.{sh,ps1}</code> against your USB first. If you already ran the build script and the directory is still empty, check the build log for download errors (the FLUX.2 klein transformer is ~2.43 GB, the Qwen3-4B text encoder at <code>ai-kit/models/</code> is ~2.33 GB, and the VAE is ~238 MB — any of them may time out on slow connections; re-run the build script to resume).
+</details>
+
+<details>
+<summary><b>Image gen: out of memory mid-generation</b></summary>
+<br>
+sd.cpp loads the FLUX.2 klein transformer (~2.43 GB), the Qwen3-4B text encoder (~2.33 GB), and the VAE (~238 MB) all together, plus working buffers — you need approximately 8-10 GB of free working RAM. Stop the AI core launcher (<code>start.bat / .sh / .command</code>) and close any browser tabs streaming from it, then retry. If the OOM persists, the host has less than 10 GB total RAM available — image generation will struggle on that machine. The AI core (Gemma 4 E4B or Qwen3 4B) and the image generator cannot run simultaneously on an 8 GB host.
+</details>
+
+<details>
+<summary><b>Image gen: takes forever / hangs at 0% / first image extremely slow</b></summary>
+<br>
+Expected on lower-powered hardware. sd.cpp loads fresh per invocation (no persistent server process), and FLUX.2 klein generates a 1024×1024 image in ~1-3 minutes on a modern laptop CPU. On Pi-class hardware (Raspberry Pi 5 or similar ARM boards) expect 5-10 minutes for the first image — subsequent images in the same session take the same time since the process exits after each generation. If the progress bar is moving (even slowly), it is working. Only kill the process if it shows no progress after 10+ minutes.
+</details>
+
 > [!TIP]
 > **Long session?** Copy `ai-kit/runtime/llamafile(.exe)` and the model GGUF to your host's local SSD. Generation speed is identical once loaded — the USB only matters for the initial model load, and exFAT is 3-4× slower than ext4/NTFS/APFS for that.
 
@@ -431,7 +455,7 @@ Either the passphrase was wrong, or the vault was encrypted to an identity file 
 
 ## 📡 §09 · Auxiliary Equipment
 
-Eight tools shipped from v0.4 through v0.8 — see [`docs/auxiliary-roadmap.md`](docs/auxiliary-roadmap.md) for the full living menu.
+Twelve tools shipped from v0.4 through v0.10 — see [`docs/auxiliary-roadmap.md`](docs/auxiliary-roadmap.md) for the full living menu.
 
 **Now in the kit:**
 
@@ -448,12 +472,12 @@ Eight tools shipped from v0.4 through v0.8 — see [`docs/auxiliary-roadmap.md`]
 | ✅ | **TTS via Sherpa-ONNX + Supertonic** (v0.7) | ~210 MB | Text → audio. POST `text/plain` to `:8768/tts`, get `audio/wav` back. Sherpa-ONNX v1.13.1 native C++ runtime per OS (no Python on host) + Supertonic int8 (~99M params, ranks high on CPU TTS — RTF 0.3 on a literal e-reader). Pivoted away from Kokoro to avoid a Python-on-host dependency. Full research: [`docs/research/tts-rag-2026-05-08.md`](docs/research/tts-rag-2026-05-08.md). |
 | ✅ | **EmbeddingGemma RAG + chat tab + journal** (v0.8) | shared with EmbedGemma + ~3.5 MB Hollama vendor | Vector index over `workspace/<name>/docs/` via redbean's `/rag/ingest` + `/rag/query` endpoints. Pure-Lua cosine over `embedding BLOB` columns (FTS5 isn't available in redbean's bundled lsqlite3 — see architecture doc for the pivot rationale). Vendored Hollama 0.35.4 chat tab at `chat/index.html` with five `_extras-*.js` adapters (`#filename` autocomplete, workspace dropdown, server-backed session persistence via `/chat/save`, three-server provider seed, daily-journal sidebar via `/journal/append`). Embedding side-arm `start-embed.*` boots EmbeddingGemma-300M on port 8769 on demand. Full design: [`docs/research/rag-architecture-2026-05-09.md`](docs/research/rag-architecture-2026-05-09.md). |
 | ✅ | **age-encrypted recovery vault** (v0.9) | ~25 MB | Per-OS `age` v1.3.1 binaries at `ai-kit/age/{linux,mac,win}/`. `vault/recovery.tar.age` is the encrypted blob (user-created). Default ceremony: `tar c recovery/ \| age -p > vault/recovery.tar.age`. Launcher `start-vault.*` decrypts to host tmpdir (preserves POSIX 0600 on SSH keys). Air-gapped from redbean — no HTTP route. BSD-3, native Go binary, no APE polyglot, no Defender FP. Full guide: [`docs/vault-guide.md`](docs/vault-guide.md). |
+| ✅ | **offline image generation** (v0.10) | ~5.0 GB | Per-OS `sd-cli` (stable-diffusion.cpp `master-596-90e87bc`) at `ai-kit/sd-img/{linux,mac,win}/` + FLUX.2 klein 4B Q4\_K\_M transformer GGUF (~2.43 GB) + small-decoder VAE safetensors (~238 MB) at `ai-kit/sd-img/models/` + Qwen3-4B Q4\_K\_M text encoder (~2.33 GB, doubles as AI core option) at `ai-kit/models/`. All Apache-2.0. Launcher `start-img.*` reads a prompt, writes a 1024×1024 PNG to the USB root. Standalone — no redbean coupling, no port. ~1-3 min per image on CPU; needs ~8-10 GB working RAM. Full guide: [`docs/img-guide.md`](docs/img-guide.md). |
 
 **Still pending** (ranked by payoff):
 
 | ⭐ | Item | Size | What it adds |
 |---|------|------|-------------|
-| 🥇 | **stable-diffusion.cpp + SDXL Turbo Q4** | ~3 GB | Offline image gen. |
 | 🥉 | **Project Gutenberg subset + Calibre Portable** | ~3 GB | Offline classic books. |
 | 🥉 | **Static ffmpeg** | ~80 MB | Media swiss-army knife; pairs with whisperfile for live captions. |
 | 🥉 | **Bigger Wikipedia ZIMs** | up to ~50 GB | `wikipedia_en_top_nopic` (~6 GB) is the sweet spot. |
@@ -556,6 +580,6 @@ _________________________/_ __ \_____________
 
 **stay weird. stay prepared. stay offline.**
 
-`v0.9.0 · "the vault" · 2026·05·09`
+`v0.10.0 · "the easel" · 2026·05·10`
 
 </div>

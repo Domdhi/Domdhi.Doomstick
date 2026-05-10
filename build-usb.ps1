@@ -49,14 +49,15 @@ Usage:
 
 Examples:
   .\build-usb.ps1 D:\                         Wizard, then build
-  .\build-usb.ps1 .\usb-layout                Local dry-run target
+  .\build-usb.ps1 $env:TEMP\doomstick-test    Local dry-run target (any writable dir)
   .\build-usb.ps1 -y D:\                      CI / scripted builds
 
 Defaults / 'full' bundle download size:
   AI core    ~22.3 GB   (43 MB runtime + 5 GB E4B + 17 GB 26B + 329 MB embed)
   Side arms  ~ 910 MB   (whisperfile small.en + kiwix + simple-en zim + tesseract + monaco pbf)
   TTS        ~ 210 MB   (sherpa-onnx per-OS + Supertonic int8 model)
-  Total      ~23.3 GB
+  Image gen  ~ 2.6 GB   (sd.cpp per-OS + FLUX.2 klein 4B Q4_K_M)
+  Total      ~28.5 GB   (full; ~23.3 GB without image gen)
 
 Re-runs skip files already present with the right size.
 "@ | Write-Host
@@ -118,6 +119,7 @@ function Apply-BakedDefaults {
     $script:DoomIncludeRedbean  = 1
     $script:DoomIncludeDoom     = 1
     $script:DoomIncludeTts      = 1
+    $script:DoomIncludeImg      = 1
 }
 
 # ---------------------------------------------------------------- TSV loader
@@ -217,10 +219,10 @@ function Apply-Bundle {
     $rows = Import-Tsv (Join-Path $Presets 'bundles.tsv')
     $row = $rows | Where-Object { $_[0] -eq $Name } | Select-Object -First 1
     if (-not $row) { Write-Error "Unknown bundle: $Name"; exit 2 }
-    # Schema (post v0.7):
+    # Schema (post v0.10):
     #   0 name  1 label  2 e4b  3 moe  4 emb  5 wiki  6 osm  7 whisper  8 ocr  9 docs
-    #   10 redbean  11 doom  12 tts  13 zim_idx  14 osm_idx  15 whisper_idx
-    #   16 est  17 summary
+    #   10 redbean  11 doom  12 tts  13 img  14 zim_idx  15 osm_idx  16 whisper_idx
+    #   17 est  18 summary
     $script:DoomIncludeE4b     = [int]$row[2]
     $script:DoomIncludeMoe     = [int]$row[3]
     $script:DoomIncludeEmb     = [int]$row[4]
@@ -232,9 +234,10 @@ function Apply-Bundle {
     $script:DoomIncludeRedbean = [int]$row[10]
     $script:DoomIncludeDoom    = [int]$row[11]
     $script:DoomIncludeTts     = [int]$row[12]
-    $zimIdx     = [int]$row[13]
-    $osmIdx     = [int]$row[14]
-    $whisperIdx = [int]$row[15]
+    $script:DoomIncludeImg     = [int]$row[13]
+    $zimIdx     = [int]$row[14]
+    $osmIdx     = [int]$row[15]
+    $whisperIdx = [int]$row[16]
 
     if ($DoomIncludeWiki -eq 1 -and $zimIdx -ge 1) {
         $z = (Import-Tsv (Join-Path $Presets 'zim.tsv'))[$zimIdx-1]
@@ -394,6 +397,13 @@ function Invoke-Wizard {
     } else {
         $script:DoomIncludeTts = 0
     }
+
+    # 10. Image gen — sd.cpp + FLUX.2 klein 4B Q4_K_M (default N — heavy at ~2.6 GB)
+    if (Read-YesNo 'Include offline image gen (sd.cpp + FLUX.2 klein 4B Q4, ~2.6 GB)?' 'N') {
+        $script:DoomIncludeImg = 1
+    } else {
+        $script:DoomIncludeImg = 0
+    }
 }
 
 # ---------------------------------------------------------------- estimate / free space
@@ -413,7 +423,8 @@ function Get-EstimatedTotalBytes {
     }
     if ($DoomIncludeRedbean -eq 1) { $total += 5500000 }   # redbean.com
     if ($DoomIncludeDoom -eq 1)    { $total += 7500000 }   # Dwasm + DOOM1.WAD
-    if ($DoomIncludeTts -eq 1)     { $total += 210000000 } # sherpa runtime (3 OS) + Supertonic
+    if ($DoomIncludeTts -eq 1)     { $total += 210000000 }  # sherpa runtime (3 OS) + Supertonic
+    if ($DoomIncludeImg -eq 1)     { $total += 2646469190 } # sd.cpp 3-OS (~42 MB) + FLUX.2 klein 4B Q4_K_M (~2.6 GB)
     return $total
 }
 
@@ -446,6 +457,7 @@ function Show-SummaryAndConfirm {
     Write-Host ("  {0,-12} {1}" -f 'redbean:',   $(if ($DoomIncludeRedbean -eq 1) { 'included (port 8768)' } else { '(skipped)' }))
     Write-Host ("  {0,-12} {1}" -f 'DOOM:',      $(if ($DoomIncludeDoom -eq 1) { 'included (Dwasm + shareware WAD)' } else { '(skipped)' }))
     Write-Host ("  {0,-12} {1}" -f 'TTS:',       $(if ($DoomIncludeTts -eq 1) { 'included (Sherpa-ONNX + Supertonic int8)' } else { '(skipped)' }))
+    Write-Host ("  {0,-12} {1}" -f 'Img gen:',   $(if ($DoomIncludeImg -eq 1) { 'included (sd.cpp + FLUX.2 klein 4B Q4_K_M)' } else { '(skipped)' }))
     Write-Host ''
     Write-Host ("  Estimated download: {0}" -f (Format-Bytes $needed))
     if ($free -gt 0) {
@@ -502,6 +514,7 @@ function Write-Config {
 `$DoomIncludeRedbean = $DoomIncludeRedbean
 `$DoomIncludeDoom    = $DoomIncludeDoom
 `$DoomIncludeTts     = $DoomIncludeTts
+`$DoomIncludeImg     = $DoomIncludeImg
 "@
     Set-Content -LiteralPath $Path -Value $content -NoNewline:$false
     Write-Host "  [save] wrote config: $Path"
@@ -557,6 +570,10 @@ $SherpaLinDir  = Join-Path $Target 'ai-kit\sherpa-tts\linux'
 $SherpaMacDir  = Join-Path $Target 'ai-kit\sherpa-tts\mac'
 $SherpaWinDir  = Join-Path $Target 'ai-kit\sherpa-tts\win'
 $SherpaModDir  = Join-Path $Target 'ai-kit\sherpa-tts\models\supertonic'
+$SdImgLinDir   = Join-Path $Target 'ai-kit\sd-img\linux'
+$SdImgMacDir   = Join-Path $Target 'ai-kit\sd-img\mac'
+$SdImgWinDir   = Join-Path $Target 'ai-kit\sd-img\win'
+$SdImgModelDir = Join-Path $Target 'ai-kit\sd-img\models'
 $AgeLinDir     = Join-Path $Target 'ai-kit\age\linux'
 $AgeMacDir     = Join-Path $Target 'ai-kit\age\mac'
 $AgeWinDir     = Join-Path $Target 'ai-kit\age\win'
@@ -576,6 +593,7 @@ $WsInboxDir    = Join-Path $WorkspaceDir '_inbox'
 foreach ($d in @($RuntimeDir, $ModelsDir, $WhisperDir, $KiwixWinDir, $KiwixLinDir, $KiwixMacDir,
                  $RedbeanDir, $RedbeanLuaDir,
                  $SherpaLinDir, $SherpaMacDir, $SherpaWinDir, $SherpaModDir,
+                 $SdImgLinDir, $SdImgMacDir, $SdImgWinDir, $SdImgModelDir,
                  $AgeLinDir, $AgeMacDir, $AgeWinDir, $VaultDir,
                  $ZimDir, $MapsDir, $OcrLibDir, $OcrLangDir, $DocsDir, $DoomDir,
                  $ChatDir, $WorkspaceDir, $WsDocsDir, $WsJournalDir, $WsInboxDir)) {
@@ -776,6 +794,17 @@ function Invoke-PolyglotZipBake {
     if ($bytes[0] -ne 0x4D -or $bytes[1] -ne 0x5A) {
         throw "polyglot bake: input does not start with MZ magic (got 0x$($bytes[0].ToString('X2'))$($bytes[1].ToString('X2'))). File is corrupted from a prior failed bake — delete it and re-run build-usb.ps1 to refetch."
     }
+    # BUG-1 recovery: detect already-bloated input from prior buggy bake (v0.10
+    # pre-fix .NET-preserve-prelude regression caused 8.84M → 14.16M → 24.80M
+    # progression). Pristine redbean.com is ~5.72 MB; a single sane bake adds
+    # ~3.5 MB of compressed entries → ~9 MB. Anything materially larger is a
+    # bloated prior-bake artifact that this function CAN'T repair (the
+    # captured prelude would be the bloated [prelude × N] block, not the
+    # single pristine prelude). Abort with a clear refetch message.
+    $maxSaneInputBytes = 12000000  # 12 MB: pristine 5.72M + ~6 MB headroom for legitimate bake growth
+    if ($bytes.Length -gt $maxSaneInputBytes) {
+        throw "polyglot bake: input ($($bytes.Length) bytes / $([Math]::Round($bytes.Length/1MB, 2)) MB) exceeds sane threshold of $maxSaneInputBytes bytes (~$([Math]::Round($maxSaneInputBytes/1MB, 1)) MB). This is a bloated artifact from a prior buggy bake (BUG-1 — .NET ZipArchive Update preserved prelude, function double-prepended). Delete '$PolyglotPath' and re-run build-usb.ps1 to refetch the pristine redbean.com (~5.72 MB) and re-bake cleanly."
+    }
 
     # Find EOCD (PK\x05\x06) by scanning backwards from end. Max comment is 64KB.
     $eocdPos = -1
@@ -801,7 +830,17 @@ function Invoke-PolyglotZipBake {
 
     # Run .NET ZipArchive Update on the file as-is. It will read the existing
     # entries (offsets are polyglot-aware so this works), then on dispose it
-    # rewrites the file from offset 0 with a pure-zip body. Prelude is lost.
+    # rewrites the file. Two observed runtime behaviors:
+    #   (A) Older .NET / .NET Framework: rewrites from offset 0 with a fresh
+    #       pure-zip body — prelude is lost. Function then re-prepends.
+    #   (B) Modern .NET (5+): preserves "extra bytes before zip" on Update
+    #       per ZIP spec, so the rewritten file STILL starts with the prelude.
+    #       Re-prepending without detecting this doubles the prelude
+    #       (BUG-1 in v0.10 — caught by Windows verification: redbean.com.exe
+    #       grew 8.84M → 14.16M → 24.80M across rebakes, each adding another
+    #       prelude copy).
+    # Defensive fix: after the .NET op, find the first PK\x03\x04 in the
+    # rewritten file and strip everything before it. Works for both runtimes.
     Add-Type -AssemblyName System.IO.Compression
     Add-Type -AssemblyName System.IO.Compression.FileSystem
     $zip = [System.IO.Compression.ZipFile]::Open($PolyglotPath, [System.IO.Compression.ZipArchiveMode]::Update)
@@ -815,17 +854,54 @@ function Invoke-PolyglotZipBake {
         $zip.Dispose()
     }
 
-    # Read the rewritten pure-zip file. Find its new EOCD and CD.
-    $newBytes = [System.IO.File]::ReadAllBytes($PolyglotPath)
+    # Read the rewritten file. Detect what .NET did via the AUTHORITATIVE
+    # EOCD -> CD offset -> first CD entry's LFH offset chain (same logic the
+    # pre-bake step uses to find the pristine prelude). Forward-scanning for
+    # PK\x03\x04 is UNSAFE for APE polyglots — redbean's prelude contains a
+    # false-positive PK signature inside its PE section (~offset 731K) before
+    # the real LFH at offset 5,318,376. Caught by Windows verification
+    # 2026-05-10 against the previous fix attempt.
+    $rawNewBytes = [System.IO.File]::ReadAllBytes($PolyglotPath)
+
+    # Find new EOCD (scan backward from end — safe; EOCD is always near tail).
     $newEocdPos = -1
-    $newMinScan = [Math]::Max(0, $newBytes.Length - 65557)
-    for ($i = $newBytes.Length - 22; $i -ge $newMinScan; $i--) {
-        if ($newBytes[$i] -eq 0x50 -and $newBytes[$i+1] -eq 0x4B -and $newBytes[$i+2] -eq 0x05 -and $newBytes[$i+3] -eq 0x06) {
+    $newMinScan = [Math]::Max(0, $rawNewBytes.Length - 65557)
+    for ($i = $rawNewBytes.Length - 22; $i -ge $newMinScan; $i--) {
+        if ($rawNewBytes[$i] -eq 0x50 -and $rawNewBytes[$i+1] -eq 0x4B -and $rawNewBytes[$i+2] -eq 0x05 -and $rawNewBytes[$i+3] -eq 0x06) {
             $newEocdPos = $i; break
         }
     }
-    if ($newEocdPos -lt 0) { throw "polyglot bake: rewritten zip has no EOCD" }
-    $newCdOffset = [BitConverter]::ToUInt32($newBytes, $newEocdPos + 16)
+    if ($newEocdPos -lt 0) { throw "polyglot bake: rewritten file has no EOCD" }
+    $newRawCdOffset = [BitConverter]::ToUInt32($rawNewBytes, $newEocdPos + 16)
+    if ($newRawCdOffset -ge $rawNewBytes.Length) { throw "polyglot bake: invalid new CD offset $newRawCdOffset" }
+    $newFirstLfhAbs = [BitConverter]::ToUInt32($rawNewBytes, $newRawCdOffset + 42)
+
+    # CASE B (modern .NET 5+): the runtime preserved "extra bytes before zip
+    # data" per ZIP spec on Update. The file already IS a valid polyglot —
+    # .NET wrote the prelude, the entries (with absolute offsets that include
+    # the prelude), the CD (absolute offsets), and the EOCD (absolute CD
+    # offset). Nothing to do — return after sanity checks.
+    if ($newFirstLfhAbs -gt 0) {
+        if ($rawNewBytes[0] -ne 0x4D -or $rawNewBytes[1] -ne 0x5A) {
+            throw "polyglot bake: Case B detected (LFH at $newFirstLfhAbs) but file doesn't start with MZ magic — runtime-behavior corner case, inspect $PolyglotPath"
+        }
+        Write-Host "  [polyglot bake] .NET preserved $newFirstLfhAbs-byte prelude on Update (Case B) — file already correct, no re-prepend needed"
+        # Post-bake size invariant (BUG-1 regression guard — Case B flavor).
+        $expectedMaxSize = $preludeSize + 8000000
+        if ($rawNewBytes.Length -gt $expectedMaxSize) {
+            throw "polyglot bake: Case B output ($($rawNewBytes.Length) bytes) exceeds prelude + 8 MB ($expectedMaxSize bytes) — possible BUG-1 regression. Inspect $PolyglotPath."
+        }
+        return
+    }
+
+    # CASE A (older .NET / .NET Framework): the runtime rewrote from offset 0
+    # with a pure-zip body, destroying the prelude. newFirstLfhAbs is 0 (zip
+    # starts at file offset 0). Re-prepend captured prelude AND shift CD
+    # offsets by +preludeSize so the EOCD and CD entries point at the right
+    # places in the final polyglot.
+    Write-Host "  [polyglot bake] .NET destroyed prelude on Update (Case A) — re-prepending captured $preludeSize-byte prelude and shifting CD offsets"
+    $newBytes = $rawNewBytes
+    $newCdOffset = $newRawCdOffset
     $newCdSize   = [BitConverter]::ToUInt32($newBytes, $newEocdPos + 12)
 
     # Shift CD-start offset in EOCD by +preludeSize.
@@ -856,7 +932,7 @@ function Invoke-PolyglotZipBake {
     }
     Move-Item -LiteralPath $tmp -Destination $PolyglotPath -Force
 
-    # Sanity-verify: still polyglot, still sized like one.
+    # Sanity-verify: still polyglot, still sized like one, NOT bloated.
     $verify = Get-Item -LiteralPath $PolyglotPath
     $head = [System.IO.File]::ReadAllBytes($PolyglotPath)[0..1]
     if ($head[0] -ne 0x4D -or $head[1] -ne 0x5A) {
@@ -864,6 +940,16 @@ function Invoke-PolyglotZipBake {
     }
     if ($verify.Length -lt $preludeSize) {
         throw "polyglot bake: output ($($verify.Length) bytes) smaller than original prelude ($preludeSize bytes)"
+    }
+    # Post-bake size invariant: output should be ~prelude + ~zip-body. The zip
+    # body should NOT contain a duplicate prelude (BUG-1 regression guard).
+    # Total entry data + CD + EOCD across the kit's 8 baked entries (.init.lua,
+    # .lua/rag-cosine.lua, doom/* x6) is well under 5 MB compressed. Allow
+    # generous 8 MB headroom for future entries; anything beyond signals a
+    # progressive-prelude regression.
+    $expectedMaxSize = $preludeSize + 8000000
+    if ($verify.Length -gt $expectedMaxSize) {
+        throw "polyglot bake: Case A output ($($verify.Length) bytes) exceeds prelude + 8 MB ($expectedMaxSize bytes) — possible BUG-1 regression: a Case A re-prepend produced an unexpectedly large file. Inspect $PolyglotPath."
     }
 }
 
@@ -987,6 +1073,101 @@ if ($DoomIncludeTts -eq 1) {
     }
 }
 
+# ---------------------------------------------------------------- image gen (sd.cpp + flux.2 klein)
+
+# stable-diffusion.cpp runtime + FLUX.2 klein 4B Q4_K_M model. v0.10 standalone
+# launcher (start-img.*) — NOT a redbean route (60-180s blocking image gen would
+# DoS every other 8768 customer). Native C++ binaries per OS, no Python on host.
+# sd.cpp uses rolling master-N-sha tags, NOT semver. ALL three OSes ship .zip
+# (Linux/Mac/Win) with files at zip root — Expand-Archive handles all three; no
+# tar.exe shellout, no Move-Item flatten step needed.
+$ImgVersion       = 'master-596-90e87bc'
+$ImgLinuxUrl      = "https://github.com/leejet/stable-diffusion.cpp/releases/download/$ImgVersion/sd-master-90e87bc-bin-Linux-Ubuntu-24.04-x86_64.zip"
+$ImgMacUrl        = "https://github.com/leejet/stable-diffusion.cpp/releases/download/$ImgVersion/sd-master-90e87bc-bin-Darwin-macOS-15.7.4-arm64.zip"
+$ImgWinUrl        = "https://github.com/leejet/stable-diffusion.cpp/releases/download/$ImgVersion/sd-master-90e87bc-bin-win-avx2-x64.zip"
+$ImgLinuxBytes    = 11560677
+$ImgMacBytes      = 21432078
+$ImgWinBytes      = 9165331
+
+# FLUX.2 klein 4B Q4_K_M — Black Forest Labs (Jan 2026), Apache-2.0. Transformer-
+# only GGUF (~2.6 GB). NOT all-in-one: sd.cpp needs companion VAE (--vae) +
+# Qwen3-4B text encoder (--llm) supplied separately. See sd.cpp docs/flux2.md.
+$ImgModelUrl      = 'https://huggingface.co/unsloth/FLUX.2-klein-4B-GGUF/resolve/main/flux-2-klein-4b-Q4_K_M.gguf'
+$ImgModelBytes    = 2604311104
+$ImgModelFilename = 'flux-2-klein-4b-Q4_K_M.gguf'
+
+# Qwen3-4B Q4_K_M — Apache-2.0 (Alibaba/Qwen). Doubles as FLUX.2 klein text
+# encoder (sd.cpp --llm flag) AND a standalone AI core option in start.{sh,bat,
+# command} picker (runtime-detected). Lives at ai-kit\models\ alongside Gemma
+# weights, NOT inside sd-img\ — shared resource. ~2.33 GB.
+$ImgLlmUrl       = 'https://huggingface.co/unsloth/Qwen3-4B-GGUF/resolve/main/Qwen3-4B-Q4_K_M.gguf?download=true'
+$ImgLlmBytes     = 2497281312
+$ImgLlmFilename  = 'Qwen3-4B-Q4_K_M.gguf'
+
+# FLUX.2 small-decoder VAE — Black Forest Labs, Apache-2.0. Ungated alternative
+# to the gated FLUX.2-dev VAE. ~238 MB.
+$ImgVaeUrl       = 'https://huggingface.co/black-forest-labs/FLUX.2-small-decoder/resolve/main/full_encoder_small_decoder.safetensors?download=true'
+$ImgVaeBytes     = 249519092
+$ImgVaeFilename  = 'full_encoder_small_decoder.safetensors'
+
+if ($DoomIncludeImg -eq 1) {
+    Write-Host ''
+    Write-Host "==> image gen (sd.cpp $ImgVersion + FLUX.2 klein)"
+
+    # Linux runtime — .zip with files at root (sd-cli + libstable-diffusion.so + sd-server + *.txt).
+    # Two-file guard catches partial-extraction state.
+    $linBin = Join-Path $SdImgLinDir 'sd-cli'
+    $linLib = Join-Path $SdImgLinDir 'libstable-diffusion.so'
+    if (-not (Test-Path -LiteralPath $linBin) -or -not (Test-Path -LiteralPath $linLib)) {
+        $linZip = Join-Path $SdImgLinDir 'sd-linux.zip'
+        Get-File -Url $ImgLinuxUrl -Dest $linZip -Expected $ImgLinuxBytes -Label "sd.cpp $ImgVersion linux-x64"
+        Expand-Archive -LiteralPath $linZip -DestinationPath $SdImgLinDir -Force
+        Remove-Item -LiteralPath $linZip -Force
+    }
+
+    # macOS runtime (arm64) — same shape as Linux.
+    $macBin = Join-Path $SdImgMacDir 'sd-cli'
+    $macLib = Join-Path $SdImgMacDir 'libstable-diffusion.dylib'
+    if (-not (Test-Path -LiteralPath $macBin) -or -not (Test-Path -LiteralPath $macLib)) {
+        $macZip = Join-Path $SdImgMacDir 'sd-mac.zip'
+        Get-File -Url $ImgMacUrl -Dest $macZip -Expected $ImgMacBytes -Label "sd.cpp $ImgVersion osx-arm64"
+        Expand-Archive -LiteralPath $macZip -DestinationPath $SdImgMacDir -Force
+        Remove-Item -LiteralPath $macZip -Force
+    }
+
+    # Windows runtime — .zip with sd-cli.exe + stable-diffusion.dll + sd-server.exe + *.txt at root.
+    # Files-at-root means no flatten/--strip-components needed.
+    $winBin = Join-Path $SdImgWinDir 'sd-cli.exe'
+    $winDll = Join-Path $SdImgWinDir 'stable-diffusion.dll'
+    if (-not (Test-Path -LiteralPath $winBin) -or -not (Test-Path -LiteralPath $winDll)) {
+        $winZip = Join-Path $SdImgWinDir 'sd-win.zip'
+        Get-File -Url $ImgWinUrl -Dest $winZip -Expected $ImgWinBytes -Label "sd.cpp $ImgVersion win-avx2-x64"
+        Expand-Archive -LiteralPath $winZip -DestinationPath $SdImgWinDir -Force
+        Remove-Item -LiteralPath $winZip -Force
+    }
+
+    # FLUX.2 klein 4B Q4_K_M transformer GGUF — 2.6 GB. NOT all-in-one (see
+    # comment block above). VAE + text-encoder companions fetched below.
+    $modelDest = Join-Path $SdImgModelDir $ImgModelFilename
+    if (-not (Test-Path -LiteralPath $modelDest)) {
+        Get-File -Url $ImgModelUrl -Dest $modelDest -Expected $ImgModelBytes -Label 'FLUX.2 klein 4B Q4_K_M (~2.6 GB)'
+    }
+
+    # FLUX.2 small-decoder VAE companion — required for sd.cpp --vae flag.
+    $vaeDest = Join-Path $SdImgModelDir $ImgVaeFilename
+    if (-not (Test-Path -LiteralPath $vaeDest)) {
+        Get-File -Url $ImgVaeUrl -Dest $vaeDest -Expected $ImgVaeBytes -Label 'FLUX.2 small-decoder VAE (~238 MB)'
+    }
+
+    # Qwen3-4B Q4_K_M text encoder + AI core option — required for sd.cpp --llm
+    # flag. Lives at ai-kit\models\ so start.{sh,bat,command} can detect it as
+    # a 3rd AI core menu option (E4B / 26B / Qwen3-4B).
+    $llmDest = Join-Path $ModelsDir $ImgLlmFilename
+    if (-not (Test-Path -LiteralPath $llmDest)) {
+        Get-File -Url $ImgLlmUrl -Dest $llmDest -Expected $ImgLlmBytes -Label 'Qwen3-4B Q4_K_M (~2.33 GB) — FLUX.2 text encoder + AI core option'
+    }
+}
+
 # ---------------------------------------------------------------- vault (age)
 
 # Per-OS pre-built age binaries (BSD-3, native Go, no APE polyglot, no Defender FP).
@@ -1069,7 +1250,7 @@ Copy-Item -LiteralPath (Join-Path $Repo 'launchers\start.bat')     -Destination 
 Copy-Item -LiteralPath (Join-Path $Repo 'launchers\start.command') -Destination (Join-Path $Target 'start.command') -Force
 Copy-Item -LiteralPath (Join-Path $Repo 'launchers\start.sh')      -Destination (Join-Path $Target 'start.sh')      -Force
 
-foreach ($tool in @('whisper', 'wiki', 'ocr', 'docs', 'doom', 'embed', 'vault')) {
+foreach ($tool in @('whisper', 'wiki', 'ocr', 'docs', 'doom', 'embed', 'vault', 'img')) {
     foreach ($ext in @('bat', 'command', 'sh')) {
         Copy-Item -LiteralPath (Join-Path $Repo "launchers\start-$tool.$ext") `
                   -Destination (Join-Path $Target "start-$tool.$ext") -Force
