@@ -12,6 +12,68 @@ Format based on [Keep a Changelog](https://keepachangelog.com/).
 
 ---
 
+## [0.12.0] — 2026-05-10
+
+*Three new side arms: a portable devtools bundle (ripgrep + fzf + jq + 7-Zip + VSCodium, ~280 MB cross-OS), a Mozilla CA certificate bundle (~226 KB, MPL-2.0, always-on), and a public-domain field manual corpus (~248 KB, US Gov works).*
+
+### Added
+
+- **devtools bundle ~280 MB cross-OS (MIT + LGPL-2.1):**
+  - ripgrep 14.1.1, fzf 0.61.3, jq 1.7.1
+  - 7-Zip 2409 (`7zzs` Linux / `7zz` macOS / `7za.exe` Windows)
+  - VSCodium 1.99.3 (community MIT build, Open VSX, NOT Microsoft VS Code)
+  Staged at `ai-kit/devtools/{linux,mac,win}/`. Launcher:
+  `start-devtools.{sh,command,bat}` — PATH-primer shell (banner +
+  devtools on PATH + interactive session). License: `licenses/devtools-*`.
+
+- **Mozilla CA bundle cacert.pem (~226 KB, MPL-2.0, always-on):**
+  Fetched from curl.se. Staged at `ai-kit/certs/cacert.pem` on every
+  build — no toggle. License: `licenses/cacert-*`.
+
+- **field-manual/ public-domain corpus (~248 KB, in-repo):**
+  Six topic files sourced from US Government works only: US Army FM
+  21-76 Survival, FEMA CERT first aid, USDA plant publications, FCC 47
+  CFR Part 97 amateur radio, EPA well-water guidance, pre-1928 US Navy
+  seamanship. Browse via `field-manual/index.html` (file:// only).
+  Opt-in via `DOOM_INCLUDE_FIELDMANUAL`; included in `balanced` and
+  `full` bundles. Source provenance + excluded sources:
+  `field-manual/NOTICE.md`.
+
+- **`licenses/` expanded** with 5 new boundary files (devtools MIT +
+  LGPL-2.1 + cacert MPL-2.0). Kit now has 7 license boundaries total:
+  Apache-2.0 (overall), doom GPL-2.0, keepassxc GPL-2.0+, ffmpeg
+  GPL-3.0+, devtools MIT+LGPL-2.1, certs MPL-2.0, field-manual PD.
+
+- **`docs/devtools-guide.md`** — user-facing devtools usage guide.
+
+### Changed
+
+- **`presets/bundles.tsv`** schema 21 → 23 columns (devtools + fieldmanual
+  toggles). `tiny`: 0/0. `balanced`: 1/1. `full`: 1/1.
+- **`build-usb.{sh,ps1}`** prompts for devtools + fieldmanual toggles;
+  size estimate updated.
+- **`dashboard/index.html`** gains §11 (Dev Tools) + §12 (Field Manual).
+- **`dashboard/README.txt`** + **`docs/usb-layout.md`** updated.
+- **`docs/auxiliary-roadmap.md`** v0.12 entry; features flipped to shipped.
+
+### Notes
+
+- **VSCodium, not Microsoft VS Code.** MS VS Code's EULA doesn't clearly
+  permit redistribution in a third-party USB kit. VSCodium (MIT, telemetry
+  stripped, Open VSX) is freely redistributable.
+- **7-Zip Windows binary note.** The Windows binary shipped as `7za.exe`
+  is actually `7zr.exe` (minimal single-file extractor, `.7z` only,
+  LGPL-2.1) — not the full `7za.exe`. Users needing .zip/.rar support
+  should use the VSCodium extension ecosystem or system tools.
+- **PortableGit deferred to v0.12.1.** PortableGit's `.7z.exe`
+  self-extractor requires Windows to unpack — incompatible with the
+  Linux/WSL build pipeline.
+- **Windows verification: PENDING** — verification in progress; see
+  `docs/testing/v0.12-verification-2026-05-10/windows/RE-VERIFY-REPORT.md`
+  once available. WSL static checks 7/7 PASS.
+
+---
+
 ## [0.11.1] — 2026-05-10
 
 *Same-day doc-fix sweep — corrects the single FAIL from v0.11 Windows
