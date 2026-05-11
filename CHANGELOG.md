@@ -21,7 +21,7 @@ Format based on [Keep a Changelog](https://keepachangelog.com/).
 - **devtools bundle ~280 MB cross-OS (MIT + LGPL-2.1):**
   - ripgrep 14.1.1, fzf 0.61.3, jq 1.7.1
   - 7-Zip 2409 (`7zzs` Linux / `7zz` macOS / `7za.exe` Windows)
-  - VSCodium 1.99.3 (community MIT build, Open VSX, NOT Microsoft VS Code)
+  - VSCodium 1.99.32846 (community MIT build, Open VSX, NOT Microsoft VS Code)
   Staged at `ai-kit/devtools/{linux,mac,win}/`. Launcher:
   `start-devtools.{sh,command,bat}` — PATH-primer shell (banner +
   devtools on PATH + interactive session). License: `licenses/devtools-*`.

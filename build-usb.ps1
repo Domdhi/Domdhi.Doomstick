@@ -1238,20 +1238,21 @@ $JqWinUrl             = "https://github.com/jqlang/jq/releases/download/jq-$JqVe
 $JqWinBytes           = 2097152
 
 $SevenZipVersion      = '2409'
-$SevenZipLinuxUrl     = "https://www.7-zip.org/a/7z$($SevenZipVersion)-linux-x64.tar.xz"
-$SevenZipLinuxBytes   = 1048576
-$SevenZipMacUrl       = "https://www.7-zip.org/a/7z$($SevenZipVersion)-mac-arm64.tar.xz"
-$SevenZipMacBytes     = 1048576
-$SevenZipWinUrl       = 'https://www.7-zip.org/a/7zr.exe'
-$SevenZipWinBytes     = 520000
+$SevenZipTag          = "$($SevenZipVersion.Substring(0,2)).$($SevenZipVersion.Substring(2))"
+$SevenZipLinuxUrl     = "https://github.com/ip7z/7zip/releases/download/$SevenZipTag/7z$($SevenZipVersion)-linux-x64.tar.xz"
+$SevenZipLinuxBytes   = 1565344
+$SevenZipMacUrl       = "https://github.com/ip7z/7zip/releases/download/$SevenZipTag/7z$($SevenZipVersion)-mac.tar.xz"
+$SevenZipMacBytes     = 1867264
+$SevenZipWinUrl       = 'https://d.7-zip.org/a/7zr.exe'
+$SevenZipWinBytes     = 602112
 
-$VSCodiumVersion      = '1.99.3'
+$VSCodiumVersion      = '1.99.32846'
 $VSCodiumLinuxUrl     = "https://github.com/VSCodium/vscodium/releases/download/$VSCodiumVersion/VSCodium-linux-x64-$VSCodiumVersion.tar.gz"
-$VSCodiumLinuxBytes   = 90177536
+$VSCodiumLinuxBytes   = 144122619
 $VSCodiumMacUrl       = "https://github.com/VSCodium/vscodium/releases/download/$VSCodiumVersion/VSCodium-darwin-arm64-$VSCodiumVersion.zip"
-$VSCodiumMacBytes     = 90177536
-$VSCodiumWinUrl       = "https://github.com/VSCodium/vscodium/releases/download/$VSCodiumVersion/VSCodiumPortable_$($VSCodiumVersion)_x64.zip"
-$VSCodiumWinBytes     = 90177536
+$VSCodiumMacBytes     = 135527979
+$VSCodiumWinUrl       = "https://github.com/VSCodium/vscodium/releases/download/$VSCodiumVersion/VSCodium-win32-x64-$VSCodiumVersion.zip"
+$VSCodiumWinBytes     = 151132911
 
 $CacertUrl            = 'https://curl.se/ca/cacert.pem'
 $CacertBytes          = 226168

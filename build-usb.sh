@@ -1175,23 +1175,27 @@ JQ_WIN_URL="https://github.com/jqlang/jq/releases/download/jq-${JQ_VERSION}/jq-w
 JQ_WIN_BYTES=2097152
 
 # 7-Zip — cross-OS archiver (LGPL-2.1 / BSD). 7zzs = static (Linux), 7zz (macOS), 7zr.exe (Windows minimal).
+# Linux + macOS archives are on GitHub (ip7z/7zip); 7zr.exe single-file at d.7-zip.org.
+# SEVENZIP_TAG derives the GitHub release tag (24.09) from the version string (2409).
 SEVENZIP_VERSION="2409"
-SEVENZIP_LINUX_URL="https://www.7-zip.org/a/7z${SEVENZIP_VERSION}-linux-x64.tar.xz"
-SEVENZIP_LINUX_BYTES=1048576
-SEVENZIP_MAC_URL="https://www.7-zip.org/a/7z${SEVENZIP_VERSION}-mac-arm64.tar.xz"
-SEVENZIP_MAC_BYTES=1048576
-SEVENZIP_WIN_7ZR_URL="https://www.7-zip.org/a/7zr.exe"
-SEVENZIP_WIN_7ZR_BYTES=520000
+SEVENZIP_TAG="${SEVENZIP_VERSION:0:2}.${SEVENZIP_VERSION:2}"
+SEVENZIP_LINUX_URL="https://github.com/ip7z/7zip/releases/download/${SEVENZIP_TAG}/7z${SEVENZIP_VERSION}-linux-x64.tar.xz"
+SEVENZIP_LINUX_BYTES=1565344
+SEVENZIP_MAC_URL="https://github.com/ip7z/7zip/releases/download/${SEVENZIP_TAG}/7z${SEVENZIP_VERSION}-mac.tar.xz"
+SEVENZIP_MAC_BYTES=1867264
+SEVENZIP_WIN_7ZR_URL="https://d.7-zip.org/a/7zr.exe"
+SEVENZIP_WIN_7ZR_BYTES=602112
 
-# VSCodium — cross-OS open-source VS Code build (MIT). Electron app; ~90 MB per OS.
+# VSCodium — cross-OS open-source VS Code build (MIT). Electron app; ~130-150 MB per OS.
 # Portable mode activated by creating a data/ dir next to the binary.
-VSCODIUM_VERSION="1.99.3"
+# Windows archive: VSCodium-win32-x64-{ver}.zip (VSCodiumPortable_... naming retired in 1.99+).
+VSCODIUM_VERSION="1.99.32846"
 VSCODIUM_LINUX_URL="https://github.com/VSCodium/vscodium/releases/download/${VSCODIUM_VERSION}/VSCodium-linux-x64-${VSCODIUM_VERSION}.tar.gz"
-VSCODIUM_LINUX_BYTES=90177536
+VSCODIUM_LINUX_BYTES=144122619
 VSCODIUM_MAC_URL="https://github.com/VSCodium/vscodium/releases/download/${VSCODIUM_VERSION}/VSCodium-darwin-arm64-${VSCODIUM_VERSION}.zip"
-VSCODIUM_MAC_BYTES=90177536
-VSCODIUM_WIN_URL="https://github.com/VSCodium/vscodium/releases/download/${VSCODIUM_VERSION}/VSCodiumPortable_${VSCODIUM_VERSION}_x64.zip"
-VSCODIUM_WIN_BYTES=90177536
+VSCODIUM_MAC_BYTES=135527979
+VSCODIUM_WIN_URL="https://github.com/VSCodium/vscodium/releases/download/${VSCODIUM_VERSION}/VSCodium-win32-x64-${VSCODIUM_VERSION}.zip"
+VSCODIUM_WIN_BYTES=151132911
 
 # Mozilla CA certificate bundle (MPL-2.0). Always-on; used by curl/Python/Git on the USB.
 CACERT_URL="https://curl.se/ca/cacert.pem"
