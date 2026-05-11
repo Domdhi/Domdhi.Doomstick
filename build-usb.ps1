@@ -1739,14 +1739,23 @@ if (Test-Path (Join-Path $Repo 'licenses\cacert-LICENSE-MPL-2.0')) { Copy-Item (
 Write-Host ''
 Write-Host '==> launchers + dashboard'
 
-Copy-Item -LiteralPath (Join-Path $Repo 'launchers\start.bat')     -Destination (Join-Path $Target 'start.bat')     -Force
+# .bat files need CRLF for cmd.exe — convert on copy regardless of source line endings
+function Copy-BatCrlf {
+    param([string]$Src, [string]$Dst)
+    $text = [System.IO.File]::ReadAllText($Src) -replace "`r`n","`n" -replace "`n","`r`n"
+    [System.IO.File]::WriteAllText($Dst, $text, [System.Text.Encoding]::ASCII)
+}
+
+Copy-BatCrlf -Src (Join-Path $Repo 'launchers\start.bat') -Dst (Join-Path $Target 'start.bat')
 Copy-Item -LiteralPath (Join-Path $Repo 'launchers\start.command') -Destination (Join-Path $Target 'start.command') -Force
 Copy-Item -LiteralPath (Join-Path $Repo 'launchers\start.sh')      -Destination (Join-Path $Target 'start.sh')      -Force
 
 foreach ($tool in @('whisper', 'wiki', 'ocr', 'docs', 'doom', 'embed', 'vault', 'img', 'passwords', 'ffmpeg', 'devtools')) {
     foreach ($ext in @('bat', 'command', 'sh')) {
-        Copy-Item -LiteralPath (Join-Path $Repo "launchers\start-$tool.$ext") `
-                  -Destination (Join-Path $Target "start-$tool.$ext") -Force
+        $src = Join-Path $Repo "launchers\start-$tool.$ext"
+        $dst = Join-Path $Target "start-$tool.$ext"
+        if ($ext -eq 'bat') { Copy-BatCrlf -Src $src -Dst $dst }
+        else { Copy-Item -LiteralPath $src -Destination $dst -Force }
     }
 }
 

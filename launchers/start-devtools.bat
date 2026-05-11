@@ -27,7 +27,7 @@ set "PATH=%DEVTOOLS_DIR%;%DEVTOOLS_DIR%\vscode;%DEVTOOLS_DIR%\git\cmd;%PATH%"
 cls
 echo.
 echo   ================================================
-echo        DEV TOOLS SESSION — Doomstick · v0.12
+echo        DEV TOOLS SESSION -- Doomstick v0.12
 echo   ================================================
 echo.
 echo   ripgrep, fzf, jq, 7-Zip, VSCodium (codium),

@@ -1745,16 +1745,19 @@ mkdir -p "$TARGET/passwords"
 echo
 echo "==> launchers + dashboard"
 
-cp "$REPO/launchers/start.bat"     "$TARGET/start.bat"
+# .bat files need CRLF for cmd.exe — convert on copy regardless of source OS line endings
+copy_bat() { sed 's/\r$//' "$1" | sed 's/$/\r/' > "$2"; }
+
+copy_bat "$REPO/launchers/start.bat" "$TARGET/start.bat"
 cp "$REPO/launchers/start.command" "$TARGET/start.command"
 cp "$REPO/launchers/start.sh"      "$TARGET/start.sh"
 
 # Side-arm launchers — copied unconditionally so the USB layout is consistent;
 # launchers themselves print a clear error if the underlying data isn't present.
 for tool in whisper wiki ocr docs doom embed vault img passwords ffmpeg devtools; do
-  cp "$REPO/launchers/start-$tool.bat"     "$TARGET/start-$tool.bat"
-  cp "$REPO/launchers/start-$tool.command" "$TARGET/start-$tool.command"
-  cp "$REPO/launchers/start-$tool.sh"      "$TARGET/start-$tool.sh"
+  copy_bat "$REPO/launchers/start-$tool.bat" "$TARGET/start-$tool.bat"
+  cp "$REPO/launchers/start-$tool.command"   "$TARGET/start-$tool.command"
+  cp "$REPO/launchers/start-$tool.sh"        "$TARGET/start-$tool.sh"
 done
 
 chmod +x "$TARGET/start.command" "$TARGET/start.sh" \
