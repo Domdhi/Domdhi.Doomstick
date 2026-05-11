@@ -68,9 +68,10 @@ Format based on [Keep a Changelog](https://keepachangelog.com/).
 - **PortableGit deferred to v0.12.1.** PortableGit's `.7z.exe`
   self-extractor requires Windows to unpack — incompatible with the
   Linux/WSL build pipeline.
-- **Windows verification: PENDING** — verification in progress; see
-  `docs/testing/v0.12-verification-2026-05-10/windows/RE-VERIFY-REPORT.md`
-  once available. WSL static checks 7/7 PASS.
+- **Windows verification: GREEN** — PRE.A..K all PASS; T19/T20/T21 all
+  PASS (T19d INTERACTIVE-UNTESTED — VSCodium --version opens GUI, expected).
+  WSL static checks 7/7 PASS. Report:
+  `docs/testing/v0.12-verification-2026-05-10/windows/RE-VERIFY-REPORT.md`.
 
 ---
 
