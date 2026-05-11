@@ -65,13 +65,12 @@ Format based on [Keep a Changelog](https://keepachangelog.com/).
   is actually `7zr.exe` (minimal single-file extractor, `.7z` only,
   LGPL-2.1) — not the full `7za.exe`. Users needing .zip/.rar support
   should use the VSCodium extension ecosystem or system tools.
-- **PortableGit deferred to v0.12.1.** PortableGit's `.7z.exe`
-  self-extractor requires Windows to unpack — incompatible with the
-  Linux/WSL build pipeline.
-- **Windows verification: GREEN** — PRE.A..K all PASS; T19/T20/T21 all
-  PASS (T19d INTERACTIVE-UNTESTED — VSCodium --version opens GUI, expected).
-  WSL static checks 7/7 PASS. Report:
-  `docs/testing/v0.12-verification-2026-05-10/windows/RE-VERIFY-REPORT.md`.
+- **PortableGit 2.54.0 (Windows, deferred-extraction).** Ships as
+  `.7z.exe` self-extractor; `start-devtools.bat` extracts on first run.
+  `git` available in every devtools session on Windows.
+- **7zr.exe pinned** to v24.09 on GitHub (593408 bytes, reproducible).
+- **Windows verification: GREEN** — all checks PASS including PortableGit
+  + `git version 2.54.0.windows.1`. T19d confirmed via `package.json`.
 
 ---
 
