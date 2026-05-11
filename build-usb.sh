@@ -113,6 +113,8 @@ apply_baked_defaults() {
   DOOM_INCLUDE_IMG=1
   DOOM_INCLUDE_PASSWORDS=1
   DOOM_INCLUDE_FFMPEG=1
+  DOOM_INCLUDE_DEVTOOLS=1
+  DOOM_INCLUDE_FIELDMANUAL=1
 }
 
 # ---------------------------------------------------------------- TSV loader
@@ -296,10 +298,11 @@ apply_bundle() {
   done
   [ "$found" -ge 0 ] || { echo "error: unknown bundle '$name'" >&2; exit 2; }
   local row="${TSV_FIELDS[$found]}"
-  # Schema (v0.11, 21 columns):
+  # Schema (v0.12, 23 columns):
   #   1 label  2 e4b  3 moe  4 emb  5 wiki  6 osm  7 whisper  8 ocr  9 docs
   #   10 redbean  11 doom  12 tts  13 img  14 passwords  15 ffmpeg
-  #   16 zim_idx  17 osm_idx  18 whisper_idx  19 estimated_bytes  20 summary
+  #   16 devtools  17 fieldmanual
+  #   18 zim_idx  19 osm_idx  20 whisper_idx  21 estimated_bytes  22 summary
   DOOM_INCLUDE_E4B="$(tsv_field "$row" 2)"
   DOOM_INCLUDE_MOE="$(tsv_field "$row" 3)"
   DOOM_INCLUDE_EMB="$(tsv_field "$row" 4)"
@@ -314,10 +317,12 @@ apply_bundle() {
   DOOM_INCLUDE_IMG="$(tsv_field "$row" 13)"
   DOOM_INCLUDE_PASSWORDS="$(tsv_field "$row" 14)"
   DOOM_INCLUDE_FFMPEG="$(tsv_field "$row" 15)"
+  DOOM_INCLUDE_DEVTOOLS="$(tsv_field "$row" 16)"
+  DOOM_INCLUDE_FIELDMANUAL="$(tsv_field "$row" 17)"
   local zim_idx osm_idx whisper_idx
-  zim_idx="$(tsv_field "$row" 16)"
-  osm_idx="$(tsv_field "$row" 17)"
-  whisper_idx="$(tsv_field "$row" 18)"
+  zim_idx="$(tsv_field "$row" 18)"
+  osm_idx="$(tsv_field "$row" 19)"
+  whisper_idx="$(tsv_field "$row" 20)"
 
   # Resolve indices into URL/FILE/BYTES via the per-thing TSVs.
   if [ "$DOOM_INCLUDE_WIKI" = "1" ] && [ "$zim_idx" -ge 1 ]; then
@@ -526,6 +531,20 @@ run_wizard() {
   else
     DOOM_INCLUDE_FFMPEG=0
   fi
+
+  # 13. Dev tools — ripgrep, fzf, jq, 7-Zip, VSCodium cross-OS (~280 MB)
+  if prompt_yes_no "Include portable dev tools (ripgrep, fzf, jq, 7-Zip, VSCodium, ~280 MB)?" "Y"; then
+    DOOM_INCLUDE_DEVTOOLS=1
+  else
+    DOOM_INCLUDE_DEVTOOLS=0
+  fi
+
+  # 14. Field manual — public-domain survival/first-aid/radio corpus (~1 MB)
+  if prompt_yes_no "Include field manual corpus (public-domain survival/first-aid/radio, ~1 MB)?" "Y"; then
+    DOOM_INCLUDE_FIELDMANUAL=1
+  else
+    DOOM_INCLUDE_FIELDMANUAL=0
+  fi
 }
 
 # ---------------------------------------------------------------- estimate / free space
@@ -552,6 +571,8 @@ estimate_total_bytes() {
   [ "${DOOM_INCLUDE_IMG:-0}" = "1" ]       && total=$((total + 2646469190)) # sd.cpp 3-OS (42 MB) + FLUX.2 klein 4B Q4_K_M (~2.6 GB)
   [ "${DOOM_INCLUDE_PASSWORDS:-0}" = "1" ] && total=$((total + 250000000))  # KeePassXC 3-OS (~47 MB AppImage + ~36 MB dmg + ~35 MB zip + extracted)
   [ "${DOOM_INCLUDE_FFMPEG:-0}" = "1" ]    && total=$((total + 210000000))  # ffmpeg 3-OS (~117 MB linux64 + ~28 MB mac + ~157 MB win)
+  [ "${DOOM_INCLUDE_DEVTOOLS:-0}" = "1" ]    && total=$((total + 280000000))  # devtools 5-tool cross-OS (dominated by VSCodium ~240 MB)
+  [ "${DOOM_INCLUDE_FIELDMANUAL:-0}" = "1" ] && total=$((total + 1000000))    # field-manual margin for user additions
   printf '%s' "$total"
 }
 
@@ -584,6 +605,8 @@ print_summary_and_confirm() {
   printf "  %-12s %s\n" "Img gen:"   "$( [ "${DOOM_INCLUDE_IMG:-0}" = "1" ] && echo 'included (sd.cpp + FLUX.2 klein 4B Q4_K_M)' || echo '(skipped)')"
   printf "  %-12s %s\n" "Passwords:" "$( [ "${DOOM_INCLUDE_PASSWORDS:-0}" = "1" ] && echo 'included (KeePassXC password manager)' || echo '(skipped)')"
   printf "  %-12s %s\n" "ffmpeg:"    "$( [ "${DOOM_INCLUDE_FFMPEG:-0}" = "1" ] && echo 'included (static ffmpeg, cross-OS media swiss-army)' || echo '(skipped)')"
+  printf "  %-12s %s\n" "Dev tools:"    "$( [ "${DOOM_INCLUDE_DEVTOOLS:-0}" = "1" ] && echo 'included (ripgrep / fzf / jq / 7-Zip / VSCodium)' || echo '(skipped)')"
+  printf "  %-12s %s\n" "Field manual:" "$( [ "${DOOM_INCLUDE_FIELDMANUAL:-0}" = "1" ] && echo 'included (public-domain corpus)' || echo '(skipped)')"
   echo
   printf "  Estimated download: %s\n" "$(human_bytes "$needed")"
   if [ "$free" -gt 0 ]; then
@@ -642,6 +665,8 @@ DOOM_INCLUDE_TTS=${DOOM_INCLUDE_TTS:-0}
 DOOM_INCLUDE_IMG=${DOOM_INCLUDE_IMG:-0}
 DOOM_INCLUDE_PASSWORDS=${DOOM_INCLUDE_PASSWORDS:-0}
 DOOM_INCLUDE_FFMPEG=${DOOM_INCLUDE_FFMPEG:-0}
+DOOM_INCLUDE_DEVTOOLS=${DOOM_INCLUDE_DEVTOOLS:-0}
+DOOM_INCLUDE_FIELDMANUAL=${DOOM_INCLUDE_FIELDMANUAL:-0}
 EOF
   echo "  [save] wrote config: $path"
 }
@@ -710,6 +735,11 @@ mkdir -p \
   "$TARGET/ai-kit/ffmpeg/linux" \
   "$TARGET/ai-kit/ffmpeg/mac" \
   "$TARGET/ai-kit/ffmpeg/win" \
+  "$TARGET/ai-kit/devtools/linux" \
+  "$TARGET/ai-kit/devtools/mac" \
+  "$TARGET/ai-kit/devtools/win" \
+  "$TARGET/ai-kit/certs" \
+  "$TARGET/field-manual" \
   "$TARGET/zim" \
   "$TARGET/maps" \
   "$TARGET/ocr/lib" \
@@ -1111,6 +1141,62 @@ FFMPEG_MAC_BYTES=28950528         # ~27.6 MB live-verified
 FFMPEG_WIN_URL="https://github.com/BtbN/FFmpeg-Builds/releases/download/latest/ffmpeg-${FFMPEG_VERSION}-latest-win64-gpl-7.1.zip"
 FFMPEG_WIN_BYTES=164626432        # ~157 MB
 
+# ripgrep — cross-OS static binaries (MIT). musl build on Linux (no libc dep).
+RIPGREP_VERSION="14.1.1"
+RIPGREP_LINUX64_URL="https://github.com/BurntSushi/ripgrep/releases/download/${RIPGREP_VERSION}/ripgrep-${RIPGREP_VERSION}-x86_64-unknown-linux-musl.tar.gz"
+RIPGREP_LINUX64_BYTES=2621440
+RIPGREP_LINUXARM64_URL="https://github.com/BurntSushi/ripgrep/releases/download/${RIPGREP_VERSION}/ripgrep-${RIPGREP_VERSION}-aarch64-unknown-linux-gnu.tar.gz"
+RIPGREP_LINUXARM64_BYTES=2621440
+RIPGREP_MAC_URL="https://github.com/BurntSushi/ripgrep/releases/download/${RIPGREP_VERSION}/ripgrep-${RIPGREP_VERSION}-aarch64-apple-darwin.tar.gz"
+RIPGREP_MAC_BYTES=2097152
+RIPGREP_WIN_URL="https://github.com/BurntSushi/ripgrep/releases/download/${RIPGREP_VERSION}/ripgrep-${RIPGREP_VERSION}-x86_64-pc-windows-msvc.zip"
+RIPGREP_WIN_BYTES=2621440
+
+# fzf — cross-OS fuzzy finder (MIT). Single binary per OS.
+FZF_VERSION="0.61.3"
+FZF_LINUX64_URL="https://github.com/junegunn/fzf/releases/download/${FZF_VERSION}/fzf-${FZF_VERSION}-linux_amd64.tar.gz"
+FZF_LINUX64_BYTES=3670016
+FZF_LINUXARM64_URL="https://github.com/junegunn/fzf/releases/download/${FZF_VERSION}/fzf-${FZF_VERSION}-linux_arm64.tar.gz"
+FZF_LINUXARM64_BYTES=3670016
+FZF_MAC_URL="https://github.com/junegunn/fzf/releases/download/${FZF_VERSION}/fzf-${FZF_VERSION}-darwin_arm64.tar.gz"
+FZF_MAC_BYTES=3670016
+FZF_WIN_URL="https://github.com/junegunn/fzf/releases/download/${FZF_VERSION}/fzf-${FZF_VERSION}-windows_amd64.zip"
+FZF_WIN_BYTES=3670016
+
+# jq — cross-OS JSON processor (MIT). Single-file binary, no archive.
+JQ_VERSION="1.7.1"
+JQ_LINUX64_URL="https://github.com/jqlang/jq/releases/download/jq-${JQ_VERSION}/jq-linux-amd64"
+JQ_LINUX64_BYTES=2097152
+JQ_LINUXARM64_URL="https://github.com/jqlang/jq/releases/download/jq-${JQ_VERSION}/jq-linux-arm64"
+JQ_LINUXARM64_BYTES=2097152
+JQ_MAC_URL="https://github.com/jqlang/jq/releases/download/jq-${JQ_VERSION}/jq-macos-arm64"
+JQ_MAC_BYTES=2097152
+JQ_WIN_URL="https://github.com/jqlang/jq/releases/download/jq-${JQ_VERSION}/jq-windows-amd64.exe"
+JQ_WIN_BYTES=2097152
+
+# 7-Zip — cross-OS archiver (LGPL-2.1 / BSD). 7zzs = static (Linux), 7zz (macOS), 7zr.exe (Windows minimal).
+SEVENZIP_VERSION="2409"
+SEVENZIP_LINUX_URL="https://www.7-zip.org/a/7z${SEVENZIP_VERSION}-linux-x64.tar.xz"
+SEVENZIP_LINUX_BYTES=1048576
+SEVENZIP_MAC_URL="https://www.7-zip.org/a/7z${SEVENZIP_VERSION}-mac-arm64.tar.xz"
+SEVENZIP_MAC_BYTES=1048576
+SEVENZIP_WIN_7ZR_URL="https://www.7-zip.org/a/7zr.exe"
+SEVENZIP_WIN_7ZR_BYTES=520000
+
+# VSCodium — cross-OS open-source VS Code build (MIT). Electron app; ~90 MB per OS.
+# Portable mode activated by creating a data/ dir next to the binary.
+VSCODIUM_VERSION="1.99.3"
+VSCODIUM_LINUX_URL="https://github.com/VSCodium/vscodium/releases/download/${VSCODIUM_VERSION}/VSCodium-linux-x64-${VSCODIUM_VERSION}.tar.gz"
+VSCODIUM_LINUX_BYTES=90177536
+VSCODIUM_MAC_URL="https://github.com/VSCodium/vscodium/releases/download/${VSCODIUM_VERSION}/VSCodium-darwin-arm64-${VSCODIUM_VERSION}.zip"
+VSCODIUM_MAC_BYTES=90177536
+VSCODIUM_WIN_URL="https://github.com/VSCodium/vscodium/releases/download/${VSCODIUM_VERSION}/VSCodiumPortable_${VSCODIUM_VERSION}_x64.zip"
+VSCODIUM_WIN_BYTES=90177536
+
+# Mozilla CA certificate bundle (MPL-2.0). Always-on; used by curl/Python/Git on the USB.
+CACERT_URL="https://curl.se/ca/cacert.pem"
+CACERT_BYTES=226168
+
 if [ "${DOOM_INCLUDE_IMG:-0}" = "1" ]; then
   echo
   echo "==> image gen (sd.cpp ${IMG_VERSION} + FLUX.2 klein)"
@@ -1379,6 +1465,254 @@ if [ "${DOOM_INCLUDE_FFMPEG:-0}" = "1" ]; then
   cp "$REPO/licenses/ffmpeg-LICENSE-GPL-3.0" "$TARGET/ai-kit/ffmpeg/LICENSE-GPL-3.0"
 fi
 
+# ---------------------------------------------------------------- devtools (ripgrep + fzf + jq + 7-Zip + VSCodium)
+
+if [ "${DOOM_INCLUDE_DEVTOOLS:-0}" = "1" ]; then
+  echo
+  echo "==> devtools (ripgrep ${RIPGREP_VERSION} + fzf ${FZF_VERSION} + jq ${JQ_VERSION} + 7-Zip ${SEVENZIP_VERSION} + VSCodium ${VSCODIUM_VERSION})"
+
+  # ripgrep — Linux x64 (musl, static)
+  if [ ! -f "$TARGET/ai-kit/devtools/linux/rg" ]; then
+    RG_TGZ="/tmp/rg-linux64.tar.gz"
+    fetch "$RIPGREP_LINUX64_URL" "$RG_TGZ" "$RIPGREP_LINUX64_BYTES" "ripgrep ${RIPGREP_VERSION} linux-x64-musl"
+    mkdir -p /tmp/rg-linux64-stage
+    tar -xzf "$RG_TGZ" -C /tmp/rg-linux64-stage --strip-components=1
+    mv /tmp/rg-linux64-stage/rg "$TARGET/ai-kit/devtools/linux/rg"
+    chmod +x "$TARGET/ai-kit/devtools/linux/rg" 2>/dev/null || true
+    rm -rf "$RG_TGZ" /tmp/rg-linux64-stage
+  else
+    echo "  [skip] ripgrep linux already present"
+  fi
+
+  # ripgrep — macOS arm64
+  if [ ! -f "$TARGET/ai-kit/devtools/mac/rg" ]; then
+    RG_TGZ="/tmp/rg-mac.tar.gz"
+    fetch "$RIPGREP_MAC_URL" "$RG_TGZ" "$RIPGREP_MAC_BYTES" "ripgrep ${RIPGREP_VERSION} mac-arm64"
+    mkdir -p /tmp/rg-mac-stage
+    tar -xzf "$RG_TGZ" -C /tmp/rg-mac-stage --strip-components=1
+    mv /tmp/rg-mac-stage/rg "$TARGET/ai-kit/devtools/mac/rg"
+    chmod +x "$TARGET/ai-kit/devtools/mac/rg" 2>/dev/null || true
+    rm -rf "$RG_TGZ" /tmp/rg-mac-stage
+  else
+    echo "  [skip] ripgrep mac already present"
+  fi
+
+  # ripgrep — Windows
+  if [ ! -f "$TARGET/ai-kit/devtools/win/rg.exe" ]; then
+    RG_ZIP="/tmp/rg-win.zip"
+    fetch "$RIPGREP_WIN_URL" "$RG_ZIP" "$RIPGREP_WIN_BYTES" "ripgrep ${RIPGREP_VERSION} win-x64"
+    if command -v unzip >/dev/null 2>&1; then
+      unzip -o -j "$RG_ZIP" "*/rg.exe" -d "$TARGET/ai-kit/devtools/win" >/dev/null
+      rm -f "$RG_ZIP"
+    else
+      echo "  [warn] unzip not available; leaving $RG_ZIP for manual extraction"
+    fi
+  else
+    echo "  [skip] ripgrep windows already present"
+  fi
+
+  # fzf — Linux x64
+  if [ ! -f "$TARGET/ai-kit/devtools/linux/fzf" ]; then
+    FZF_TGZ="/tmp/fzf-linux64.tar.gz"
+    fetch "$FZF_LINUX64_URL" "$FZF_TGZ" "$FZF_LINUX64_BYTES" "fzf ${FZF_VERSION} linux-amd64"
+    tar -xzf "$FZF_TGZ" -C "$TARGET/ai-kit/devtools/linux" fzf
+    chmod +x "$TARGET/ai-kit/devtools/linux/fzf" 2>/dev/null || true
+    rm -f "$FZF_TGZ"
+  else
+    echo "  [skip] fzf linux already present"
+  fi
+
+  # fzf — macOS arm64
+  if [ ! -f "$TARGET/ai-kit/devtools/mac/fzf" ]; then
+    FZF_TGZ="/tmp/fzf-mac.tar.gz"
+    fetch "$FZF_MAC_URL" "$FZF_TGZ" "$FZF_MAC_BYTES" "fzf ${FZF_VERSION} darwin-arm64"
+    tar -xzf "$FZF_TGZ" -C "$TARGET/ai-kit/devtools/mac" fzf
+    chmod +x "$TARGET/ai-kit/devtools/mac/fzf" 2>/dev/null || true
+    rm -f "$FZF_TGZ"
+  else
+    echo "  [skip] fzf mac already present"
+  fi
+
+  # fzf — Windows
+  if [ ! -f "$TARGET/ai-kit/devtools/win/fzf.exe" ]; then
+    FZF_ZIP="/tmp/fzf-win.zip"
+    fetch "$FZF_WIN_URL" "$FZF_ZIP" "$FZF_WIN_BYTES" "fzf ${FZF_VERSION} windows-amd64"
+    if command -v unzip >/dev/null 2>&1; then
+      unzip -o "$FZF_ZIP" fzf.exe -d "$TARGET/ai-kit/devtools/win" >/dev/null
+      rm -f "$FZF_ZIP"
+    else
+      echo "  [warn] unzip not available; leaving $FZF_ZIP for manual extraction"
+    fi
+  else
+    echo "  [skip] fzf windows already present"
+  fi
+
+  # jq — single-file binaries (no archive)
+  if [ ! -f "$TARGET/ai-kit/devtools/linux/jq" ]; then
+    fetch "$JQ_LINUX64_URL" "$TARGET/ai-kit/devtools/linux/jq" "$JQ_LINUX64_BYTES" "jq ${JQ_VERSION} linux-amd64"
+    chmod +x "$TARGET/ai-kit/devtools/linux/jq" 2>/dev/null || true
+  else
+    echo "  [skip] jq linux already present"
+  fi
+
+  if [ ! -f "$TARGET/ai-kit/devtools/mac/jq" ]; then
+    fetch "$JQ_MAC_URL" "$TARGET/ai-kit/devtools/mac/jq" "$JQ_MAC_BYTES" "jq ${JQ_VERSION} macos-arm64"
+    chmod +x "$TARGET/ai-kit/devtools/mac/jq" 2>/dev/null || true
+  else
+    echo "  [skip] jq mac already present"
+  fi
+
+  if [ ! -f "$TARGET/ai-kit/devtools/win/jq.exe" ]; then
+    fetch "$JQ_WIN_URL" "$TARGET/ai-kit/devtools/win/jq.exe" "$JQ_WIN_BYTES" "jq ${JQ_VERSION} windows-amd64"
+  else
+    echo "  [skip] jq windows already present"
+  fi
+
+  # 7-Zip Linux — tar.xz, extract 7zzs (static, no unrar code)
+  if [ ! -f "$TARGET/ai-kit/devtools/linux/7zzs" ]; then
+    SEVENZIP_LINUX_TXZ="/tmp/7z-linux.tar.xz"
+    fetch "$SEVENZIP_LINUX_URL" "$SEVENZIP_LINUX_TXZ" "$SEVENZIP_LINUX_BYTES" "7-Zip ${SEVENZIP_VERSION} linux-x64"
+    mkdir -p /tmp/7z-linux-stage
+    tar -xJf "$SEVENZIP_LINUX_TXZ" -C /tmp/7z-linux-stage 2>/dev/null || tar -xf "$SEVENZIP_LINUX_TXZ" -C /tmp/7z-linux-stage
+    [ -f /tmp/7z-linux-stage/7zzs ] && mv /tmp/7z-linux-stage/7zzs "$TARGET/ai-kit/devtools/linux/7zzs" || mv /tmp/7z-linux-stage/7zz "$TARGET/ai-kit/devtools/linux/7zzs"
+    chmod +x "$TARGET/ai-kit/devtools/linux/7zzs" 2>/dev/null || true
+    rm -rf "$SEVENZIP_LINUX_TXZ" /tmp/7z-linux-stage
+  else
+    echo "  [skip] 7-Zip linux already present"
+  fi
+
+  # 7-Zip macOS — tar.xz, extract 7zz (note: macOS binary is 7zz NOT 7zzs — upstream naming inconsistency)
+  if [ ! -f "$TARGET/ai-kit/devtools/mac/7zz" ]; then
+    SEVENZIP_MAC_TXZ="/tmp/7z-mac.tar.xz"
+    fetch "$SEVENZIP_MAC_URL" "$SEVENZIP_MAC_TXZ" "$SEVENZIP_MAC_BYTES" "7-Zip ${SEVENZIP_VERSION} mac-arm64"
+    mkdir -p /tmp/7z-mac-stage
+    tar -xJf "$SEVENZIP_MAC_TXZ" -C /tmp/7z-mac-stage 2>/dev/null || tar -xf "$SEVENZIP_MAC_TXZ" -C /tmp/7z-mac-stage
+    [ -f /tmp/7z-mac-stage/7zz ] && mv /tmp/7z-mac-stage/7zz "$TARGET/ai-kit/devtools/mac/7zz"
+    chmod +x "$TARGET/ai-kit/devtools/mac/7zz" 2>/dev/null || true
+    rm -rf "$SEVENZIP_MAC_TXZ" /tmp/7z-mac-stage
+  else
+    echo "  [skip] 7-Zip mac already present"
+  fi
+
+  # 7-Zip Windows — 7z extra archive. Use 7zr.exe (single-file, free) as fallback extractor
+  # then copy 7za.exe for user-facing tool
+  if [ ! -f "$TARGET/ai-kit/devtools/win/7za.exe" ]; then
+    # For Windows side, provide 7zr.exe (the free/minimal single-file extractor) as 7za.exe
+    # The extra archive extraction requires 7zr itself on Linux — if not available, fetch 7zr.exe directly
+    fetch "$SEVENZIP_WIN_7ZR_URL" "$TARGET/ai-kit/devtools/win/7za.exe" "$SEVENZIP_WIN_7ZR_BYTES" "7-Zip ${SEVENZIP_VERSION} win (7zr.exe portable)"
+  else
+    echo "  [skip] 7-Zip windows already present"
+  fi
+
+  # VSCodium — Linux x64: extract into vscode/ subdir (keeps Electron tree separate from single-binary tools)
+  if [ ! -f "$TARGET/ai-kit/devtools/linux/vscode/codium" ]; then
+    mkdir -p "$TARGET/ai-kit/devtools/linux/vscode"
+    VSCODIUM_LINUX_TGZ="/tmp/vscodium-linux.tar.gz"
+    fetch "$VSCODIUM_LINUX_URL" "$VSCODIUM_LINUX_TGZ" "$VSCODIUM_LINUX_BYTES" "VSCodium ${VSCODIUM_VERSION} linux-x64"
+    tar -xzf "$VSCODIUM_LINUX_TGZ" --strip-components=0 -C "$TARGET/ai-kit/devtools/linux/vscode" >/dev/null 2>&1 || \
+      tar -xzf "$VSCODIUM_LINUX_TGZ" -C "$TARGET/ai-kit/devtools/linux/vscode" >/dev/null
+    # Ensure codium binary is executable
+    find "$TARGET/ai-kit/devtools/linux/vscode" -name "codium" -type f -exec chmod +x {} \; 2>/dev/null || true
+    # Create portable mode data dir
+    mkdir -p "$TARGET/ai-kit/devtools/linux/vscode/data"
+    rm -f "$VSCODIUM_LINUX_TGZ"
+  else
+    echo "  [skip] VSCodium linux already present"
+  fi
+
+  # VSCodium — macOS arm64: .zip → extracts as VSCodium.app
+  if [ ! -d "$TARGET/ai-kit/devtools/mac/vscode/VSCodium.app" ]; then
+    mkdir -p "$TARGET/ai-kit/devtools/mac/vscode"
+    VSCODIUM_MAC_ZIP="/tmp/vscodium-mac.zip"
+    fetch "$VSCODIUM_MAC_URL" "$VSCODIUM_MAC_ZIP" "$VSCODIUM_MAC_BYTES" "VSCodium ${VSCODIUM_VERSION} darwin-arm64"
+    if command -v unzip >/dev/null 2>&1; then
+      unzip -o "$VSCODIUM_MAC_ZIP" -d "$TARGET/ai-kit/devtools/mac/vscode" >/dev/null
+      # Create portable mode data dir
+      mkdir -p "$TARGET/ai-kit/devtools/mac/vscode/data"
+      rm -f "$VSCODIUM_MAC_ZIP"
+    else
+      echo "  [warn] unzip not available; leaving $VSCODIUM_MAC_ZIP for manual extraction"
+    fi
+  else
+    echo "  [skip] VSCodium mac already present"
+  fi
+
+  # VSCodium — Windows: portable zip
+  if [ ! -f "$TARGET/ai-kit/devtools/win/vscode/VSCodium.exe" ] && [ ! -f "$TARGET/ai-kit/devtools/win/vscode/codium.exe" ]; then
+    mkdir -p "$TARGET/ai-kit/devtools/win/vscode"
+    VSCODIUM_WIN_ZIP="/tmp/vscodium-win.zip"
+    fetch "$VSCODIUM_WIN_URL" "$VSCODIUM_WIN_ZIP" "$VSCODIUM_WIN_BYTES" "VSCodium ${VSCODIUM_VERSION} win-x64-portable"
+    if command -v unzip >/dev/null 2>&1; then
+      unzip -o "$VSCODIUM_WIN_ZIP" -d "$TARGET/ai-kit/devtools/win/vscode" >/dev/null
+      # Create portable mode data dir (VSCodium auto-detects if data/ exists next to binary)
+      mkdir -p "$TARGET/ai-kit/devtools/win/vscode/data"
+      rm -f "$VSCODIUM_WIN_ZIP"
+    else
+      echo "  [warn] unzip not available; leaving $VSCODIUM_WIN_ZIP for manual extraction"
+    fi
+  else
+    echo "  [skip] VSCodium windows already present"
+  fi
+fi
+
+# ---------------------------------------------------------------- certs (Mozilla CA bundle — always-on)
+
+echo
+echo "==> certs (Mozilla CA bundle)"
+mkdir -p "$TARGET/ai-kit/certs"
+if [ ! -f "$TARGET/ai-kit/certs/cacert.pem" ]; then
+  fetch "$CACERT_URL" "$TARGET/ai-kit/certs/cacert.pem" "$CACERT_BYTES" "Mozilla CA bundle (cacert.pem)"
+else
+  echo "  [skip] cacert.pem already present"
+fi
+# Write usage README
+cat > "$TARGET/ai-kit/certs/README.txt" <<'CERTEOF'
+Mozilla CA Certificate Bundle
+==============================
+File: cacert.pem   (~226 KB, MPL-2.0, from curl.se/docs/caextract.html)
+
+Use with curl:
+  curl --cacert "$ROOT/ai-kit/certs/cacert.pem" https://example.com
+
+Use with Python/requests:
+  export REQUESTS_CA_BUNDLE="$ROOT/ai-kit/certs/cacert.pem"
+
+Use with Git:
+  git config --global http.sslCAInfo "$ROOT/ai-kit/certs/cacert.pem"
+
+License: Mozilla Public License 2.0 (see ai-kit/certs/LICENSE-MPL-2.0)
+Updated: run build-usb.sh against this USB to re-fetch the latest bundle.
+CERTEOF
+
+# ---------------------------------------------------------------- field-manual (public-domain corpus)
+
+if [ "${DOOM_INCLUDE_FIELDMANUAL:-0}" = "1" ]; then
+  echo
+  echo "==> field-manual (public-domain corpus)"
+  if [ ! -f "$TARGET/field-manual/index.html" ]; then
+    if [ -d "$REPO/field-manual" ]; then
+      cp -r "$REPO/field-manual/" "$TARGET/field-manual/"
+      echo "  [done] field-manual corpus copied"
+    else
+      echo "  [skip] field-manual source not found in repo (expected at $REPO/field-manual/)"
+    fi
+  else
+    echo "  [skip] field-manual already present"
+  fi
+fi
+
+# ---------------------------------------------------------------- license copies (v0.12 side-arms)
+
+if [ "${DOOM_INCLUDE_DEVTOOLS:-0}" = "1" ]; then
+  mkdir -p "$TARGET/ai-kit/devtools/LICENSES"
+  [ -f "$REPO/licenses/devtools-NOTICE.md" ]    && cp "$REPO/licenses/devtools-NOTICE.md"    "$TARGET/ai-kit/devtools/NOTICE.md"
+  [ -d "$REPO/licenses/devtools-LICENSES" ]     && cp -r "$REPO/licenses/devtools-LICENSES/" "$TARGET/ai-kit/devtools/LICENSES/"
+fi
+
+# cacert is always-on
+[ -f "$REPO/licenses/cacert-NOTICE.md" ]       && cp "$REPO/licenses/cacert-NOTICE.md"       "$TARGET/ai-kit/certs/NOTICE.md"
+[ -f "$REPO/licenses/cacert-LICENSE-MPL-2.0" ] && cp "$REPO/licenses/cacert-LICENSE-MPL-2.0" "$TARGET/ai-kit/certs/LICENSE-MPL-2.0"
+
 # ---------------------------------------------------------------- passwords/ skeleton
 
 # passwords/ landing zone — README tells user how to create their first .kdbx.
@@ -1399,7 +1733,7 @@ cp "$REPO/launchers/start.sh"      "$TARGET/start.sh"
 
 # Side-arm launchers — copied unconditionally so the USB layout is consistent;
 # launchers themselves print a clear error if the underlying data isn't present.
-for tool in whisper wiki ocr docs doom embed vault img passwords ffmpeg; do
+for tool in whisper wiki ocr docs doom embed vault img passwords ffmpeg devtools; do
   cp "$REPO/launchers/start-$tool.bat"     "$TARGET/start-$tool.bat"
   cp "$REPO/launchers/start-$tool.command" "$TARGET/start-$tool.command"
   cp "$REPO/launchers/start-$tool.sh"      "$TARGET/start-$tool.sh"

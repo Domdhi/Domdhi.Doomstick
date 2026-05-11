@@ -1558,6 +1558,91 @@ body.mobile-mode .terminal-action { padding: 14px 22px; }
   </div>
 </section>
 
+<!-- ============== §11 DEV TOOLS (DESKTOP) ============== -->
+
+<section class="desktop-only">
+  <h2 class="section-title"><span class="num">§11</span>Dev Tools</h2>
+  <p class="section-lede">
+    ripgrep, fzf, jq, 7-Zip, and VSCodium ship at <code>ai-kit/devtools/</code> — no install, no PATH
+    friction. The launcher drops you into a shell with all five tools already on PATH.
+    <strong>Mixed licenses (MIT / LGPL-2.1). VSCodium not Microsoft VS Code. PortableGit deferred to v0.12.1.</strong>
+  </p>
+
+  <div class="grid grid-2">
+
+    <article class="terminal">
+      <span class="terminal-tag">▸ DEVTOOLS·SHELL</span>
+      <h3 class="terminal-name">Dev Tools Launcher</h3>
+      <p class="terminal-desc">
+        <code>start-devtools.bat</code> / <code>.command</code> / <code>.sh</code>
+        primes <code>PATH</code> with <code>ai-kit/devtools/&lt;os&gt;/</code> and
+        opens an interactive shell. Type <code>rg</code>, <code>fzf</code>, <code>jq</code>,
+        <code>7zzs</code> (Linux) / <code>7zz</code> (macOS) / <code>7za</code> (Windows),
+        or <code>codium</code> directly — no prefix needed.
+        Runtime lives at <code>ai-kit/devtools/</code> (MIT + LGPL-2.1).
+      </p>
+      <code class="terminal-cmd" data-cmd-for="start-devtools.bat">start-devtools.bat</code>
+      <button class="terminal-action" type="button" data-copy-path="ai-kit/devtools/">Copy Path</button>
+    </article>
+
+    <article class="terminal">
+      <span class="terminal-tag">▸ DEVTOOLS·TOOLS</span>
+      <h3 class="terminal-name">Tools on PATH</h3>
+      <p class="terminal-desc">
+        <strong>ripgrep</strong> — blazing-fast recursive grep: <code>rg 'pattern' .</code><br>
+        <strong>fzf</strong> — fuzzy finder for files and history: <code>fzf</code><br>
+        <strong>jq</strong> — JSON processor: <code>jq '.field' data.json</code><br>
+        <strong>7-Zip</strong> — archive tool: <code>7zzs x archive.7z</code> (Linux),
+        <code>7zz x archive.7z</code> (macOS), <code>7za x archive.7z</code> (Windows)<br>
+        <strong>VSCodium</strong> — VS Code (MIT build, no telemetry): <code>codium .</code>
+      </p>
+    </article>
+
+  </div>
+</section>
+
+<!-- ============== §12 FIELD MANUAL ============== -->
+
+<section>
+  <h2 class="section-title"><span class="num">§12</span>Field Manual</h2>
+  <p class="section-lede">
+    A portable offline reference library covering survival basics, emergency first aid,
+    edible plant identification, amateur radio, well water safety, and rope knots.
+    <strong>All US Government works, public domain per 17 U.S.C. § 105 (FM 21-76, FEMA CERT, FCC Part 97, USDA, EPA)
+    plus pre-1928 US Navy seamanship knot manuals. No internet required.</strong>
+  </p>
+
+  <div class="grid grid-2">
+
+    <article class="terminal">
+      <span class="terminal-tag">▸ FIELD·BROWSE</span>
+      <h3 class="terminal-name">Browse Field Manual</h3>
+      <p class="terminal-desc">
+        Open the index in any browser to read topic files offline.
+        Works from USB directly via <code>file://</code> — no server needed.
+        Add your own content by dropping Markdown files into <code>field-manual/</code>
+        and updating <code>field-manual/index.html</code>.
+      </p>
+      <a class="terminal-action solo" href="field-manual/index.html">Open Field Manual</a>
+    </article>
+
+    <article class="terminal">
+      <span class="terminal-tag">▸ FIELD·CONTENTS</span>
+      <h3 class="terminal-name">What's Inside</h3>
+      <p class="terminal-desc">
+        Six topic files included at v0.12:<br>
+        <strong>Survival basics</strong> — US Army FM 21-76 S.U.R.V.I.V.A.L. framework<br>
+        <strong>Emergency first aid</strong> — FEMA CERT triage, bleeding control, airway<br>
+        <strong>Edible plants</strong> — Universal Edibility Test, 10 safe species, toxic lookalikes<br>
+        <strong>Amateur radio</strong> — FCC Part 97 rules, license classes, emergency comms<br>
+        <strong>Well water</strong> — EPA shock chlorination, emergency treatment<br>
+        <strong>Rope knots</strong> — 10 essential knots with ASCII diagrams (pre-1928 US Navy)
+      </p>
+    </article>
+
+  </div>
+</section>
+
 <!-- ============== §06m MOBILE FIELD NOTES ============== -->
 
 <section class="mobile-only">

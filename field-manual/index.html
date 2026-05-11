@@ -1,0 +1,534 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Doomstick Field Manual</title>
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  :root {
+    --bg: #fafaf8;
+    --surface: #f4f4f0;
+    --border: #d8d4cc;
+    --text: #1a1a16;
+    --text-muted: #5a5a50;
+    --accent: #2a6a3a;
+    --accent-hover: #1e4e2c;
+    --link: #2a6a3a;
+    --link-visited: #1e4e2c;
+    --sidebar-width: 260px;
+    --max-content: 860px;
+  }
+
+  html { font-size: 16px; }
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: Georgia, 'Times New Roman', serif;
+    line-height: 1.65;
+    min-height: 100vh;
+  }
+
+  /* ── Layout ── */
+  .layout {
+    display: flex;
+    min-height: 100vh;
+  }
+
+  /* ── Sidebar ── */
+  .sidebar {
+    width: var(--sidebar-width);
+    background: var(--surface);
+    border-right: 1px solid var(--border);
+    padding: 1.5rem 1rem;
+    position: sticky;
+    top: 0;
+    height: 100vh;
+    overflow-y: auto;
+    flex-shrink: 0;
+  }
+
+  .sidebar-title {
+    font-size: 0.8rem;
+    font-family: 'Courier New', monospace;
+    text-transform: uppercase;
+    letter-spacing: 0.1em;
+    color: var(--text-muted);
+    margin-bottom: 1.25rem;
+    padding-bottom: 0.75rem;
+    border-bottom: 1px solid var(--border);
+  }
+
+  .sidebar nav ul {
+    list-style: none;
+  }
+
+  .sidebar nav li {
+    margin-bottom: 0.25rem;
+  }
+
+  .sidebar nav a {
+    display: block;
+    padding: 0.45rem 0.6rem;
+    color: var(--link);
+    text-decoration: none;
+    font-size: 0.92rem;
+    border-radius: 4px;
+    font-family: Georgia, serif;
+    transition: background 0.15s;
+  }
+
+  .sidebar nav a:hover {
+    background: var(--border);
+    color: var(--accent-hover);
+  }
+
+  .sidebar nav a .section-num {
+    font-family: 'Courier New', monospace;
+    font-size: 0.75rem;
+    color: var(--text-muted);
+    display: block;
+    margin-bottom: 0.1rem;
+  }
+
+  .sidebar-footer {
+    margin-top: 1.5rem;
+    padding-top: 1rem;
+    border-top: 1px solid var(--border);
+    font-size: 0.8rem;
+    color: var(--text-muted);
+    font-family: 'Courier New', monospace;
+  }
+
+  .sidebar-footer a {
+    color: var(--link);
+    text-decoration: none;
+    display: block;
+    margin-bottom: 0.3rem;
+  }
+
+  .sidebar-footer a:hover { text-decoration: underline; }
+
+  /* ── Main content ── */
+  .main {
+    flex: 1;
+    min-width: 0;
+    padding: 2.5rem 3rem;
+    max-width: calc(var(--max-content) + 6rem);
+  }
+
+  .hero {
+    max-width: var(--max-content);
+    margin-bottom: 2.5rem;
+    padding-bottom: 2rem;
+    border-bottom: 2px solid var(--border);
+  }
+
+  .hero h1 {
+    font-size: 2rem;
+    font-weight: normal;
+    letter-spacing: -0.02em;
+    margin-bottom: 0.5rem;
+    color: var(--text);
+  }
+
+  .hero .subtitle {
+    font-size: 0.95rem;
+    color: var(--text-muted);
+    font-family: 'Courier New', monospace;
+    margin-bottom: 1rem;
+  }
+
+  .hero .description {
+    font-size: 1rem;
+    color: var(--text-muted);
+    line-height: 1.7;
+  }
+
+  /* ── Topic cards ── */
+  .topic-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(340px, 1fr));
+    gap: 1.25rem;
+    max-width: var(--max-content);
+    margin-bottom: 2.5rem;
+  }
+
+  .topic-card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    padding: 1.25rem 1.5rem;
+    text-decoration: none;
+    color: inherit;
+    display: flex;
+    flex-direction: column;
+    transition: border-color 0.15s, box-shadow 0.15s;
+  }
+
+  .topic-card:hover {
+    border-color: var(--accent);
+    box-shadow: 0 2px 8px rgba(42, 106, 58, 0.1);
+  }
+
+  .topic-card .card-tag {
+    font-family: 'Courier New', monospace;
+    font-size: 0.72rem;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    color: var(--accent);
+    margin-bottom: 0.5rem;
+  }
+
+  .topic-card h2 {
+    font-size: 1.1rem;
+    font-weight: bold;
+    margin-bottom: 0.5rem;
+    color: var(--text);
+    line-height: 1.3;
+  }
+
+  .topic-card .card-desc {
+    font-size: 0.875rem;
+    color: var(--text-muted);
+    line-height: 1.55;
+    flex: 1;
+  }
+
+  .topic-card .card-source {
+    margin-top: 0.85rem;
+    font-size: 0.75rem;
+    font-family: 'Courier New', monospace;
+    color: var(--text-muted);
+    padding-top: 0.75rem;
+    border-top: 1px solid var(--border);
+  }
+
+  /* ── Attribution block ── */
+  .attribution {
+    max-width: var(--max-content);
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-left: 4px solid var(--accent);
+    padding: 1.25rem 1.5rem;
+    border-radius: 4px;
+    margin-bottom: 2rem;
+  }
+
+  .attribution h3 {
+    font-size: 0.85rem;
+    font-family: 'Courier New', monospace;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    color: var(--accent);
+    margin-bottom: 0.75rem;
+  }
+
+  .attribution p {
+    font-size: 0.875rem;
+    color: var(--text-muted);
+    line-height: 1.65;
+  }
+
+  /* ── Reference links ── */
+  .ref-links {
+    max-width: var(--max-content);
+    margin-bottom: 2rem;
+  }
+
+  .ref-links h3 {
+    font-size: 0.85rem;
+    font-family: 'Courier New', monospace;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    color: var(--text-muted);
+    margin-bottom: 0.75rem;
+  }
+
+  .ref-links a {
+    display: inline-block;
+    margin-right: 1.5rem;
+    margin-bottom: 0.4rem;
+    color: var(--link);
+    font-size: 0.9rem;
+    text-decoration: none;
+  }
+
+  .ref-links a:hover { text-decoration: underline; }
+  .ref-links a:visited { color: var(--link-visited); }
+
+  /* ── Mobile: hamburger toggle ── */
+  .menu-toggle {
+    display: none;
+    position: fixed;
+    top: 1rem;
+    left: 1rem;
+    z-index: 200;
+    background: var(--accent);
+    color: #fff;
+    border: none;
+    border-radius: 4px;
+    width: 44px;
+    height: 44px;
+    font-size: 1.25rem;
+    cursor: pointer;
+    align-items: center;
+    justify-content: center;
+  }
+
+  /* ── Responsive ── */
+  @media (max-width: 700px) {
+    .menu-toggle {
+      display: flex;
+    }
+
+    .sidebar {
+      position: fixed;
+      top: 0;
+      left: 0;
+      height: 100vh;
+      z-index: 100;
+      transform: translateX(-100%);
+      transition: transform 0.22s ease;
+      width: 280px;
+    }
+
+    .sidebar.open {
+      transform: translateX(0);
+    }
+
+    .sidebar-overlay {
+      display: none;
+      position: fixed;
+      inset: 0;
+      background: rgba(0,0,0,0.35);
+      z-index: 99;
+    }
+
+    .sidebar-overlay.open {
+      display: block;
+    }
+
+    .layout {
+      display: block;
+    }
+
+    .main {
+      padding: 1.25rem 1rem;
+      padding-top: 4rem;
+    }
+
+    .topic-grid {
+      grid-template-columns: 1fr;
+    }
+
+    .hero h1 {
+      font-size: 1.5rem;
+    }
+  }
+</style>
+</head>
+<body>
+
+<button class="menu-toggle" id="menuToggle" aria-label="Open navigation">&#9776;</button>
+<div class="sidebar-overlay" id="sidebarOverlay"></div>
+
+<div class="layout">
+  <aside class="sidebar" id="sidebar">
+    <div class="sidebar-title">Field Manual</div>
+    <nav aria-label="Contents">
+      <ul>
+        <li>
+          <a href="fm21-76-survival.md">
+            <span class="section-num">01 — FM 21-76</span>
+            Survival Skills
+          </a>
+        </li>
+        <li>
+          <a href="cert-first-aid.md">
+            <span class="section-num">02 — FEMA CERT</span>
+            First Aid &amp; Triage
+          </a>
+        </li>
+        <li>
+          <a href="edible-plants.md">
+            <span class="section-num">03 — USDA</span>
+            Edible Wild Plants
+          </a>
+        </li>
+        <li>
+          <a href="part-97-amateur-radio.md">
+            <span class="section-num">04 — FCC Part 97</span>
+            Amateur Radio
+          </a>
+        </li>
+        <li>
+          <a href="well-water.md">
+            <span class="section-num">05 — EPA</span>
+            Private Well Water
+          </a>
+        </li>
+        <li>
+          <a href="knots.md">
+            <span class="section-num">06 — US Navy</span>
+            Practical Knots
+          </a>
+        </li>
+      </ul>
+    </nav>
+    <div class="sidebar-footer">
+      <a href="NOTICE.md">NOTICE.md — sources &amp; attribution</a>
+      <a href="README.md">README.md — maintainer notes</a>
+    </div>
+  </aside>
+
+  <main class="main">
+    <section class="hero">
+      <h1>Doomstick Field Manual</h1>
+      <p class="subtitle">Public-domain survival and reference corpus — offline, file://</p>
+      <p class="description">
+        A portable offline reference library covering survival skills, emergency medicine,
+        edible plant identification, amateur radio regulations, well water safety, and practical
+        knots. All content is sourced from US Government works or pre-1928 publications and
+        is in the public domain. No internet connection required.
+      </p>
+    </section>
+
+    <div class="topic-grid">
+
+      <a class="topic-card" href="fm21-76-survival.md">
+        <div class="card-tag">01 — US Army</div>
+        <h2>Survival Skills — FM 21-76</h2>
+        <p class="card-desc">
+          The S.U.R.V.I.V.A.L. acronym, survival priority order, shelter construction
+          (lean-to, debris hut, snow trench), fire making (bow drill, fire lays),
+          water procurement and purification, signaling techniques, navigation without
+          instruments, food procurement, trapping basics, and field first aid.
+        </p>
+        <div class="card-source">Source: US Army FM 21-76, 1992 &bull; US Gov. public domain</div>
+      </a>
+
+      <a class="topic-card" href="cert-first-aid.md">
+        <div class="card-tag">02 — FEMA</div>
+        <h2>First Aid &amp; Disaster Response — CERT</h2>
+        <p class="card-desc">
+          Scene safety (STAR), mass casualty triage, START triage algorithm (RPM
+          assessment, four categories), bleeding control (direct pressure, tourniquets,
+          wound packing), shock recognition and treatment, spinal precautions, splinting,
+          burn classification and treatment, airway management, and CERT search and rescue.
+        </p>
+        <div class="card-source">Source: FEMA CERT training program &bull; US Gov. public domain</div>
+      </a>
+
+      <a class="topic-card" href="edible-plants.md">
+        <div class="card-tag">03 — USDA</div>
+        <h2>Edible Wild Plants — Continental US</h2>
+        <p class="card-desc">
+          The 9-step Universal Edibility Test, safe species (dandelion, cattail, wood sorrel,
+          purslane, lamb's quarters, violet, blackberries, wild onion, pine, acorns), and
+          toxic lookalikes to avoid (water hemlock, poison hemlock, death camas, false morel,
+          destroying angel). Preparation and seasonal availability.
+        </p>
+        <div class="card-source">Source: USDA ARS &amp; USDA Forest Service &bull; US Gov. public domain</div>
+      </a>
+
+      <a class="topic-card" href="part-97-amateur-radio.md">
+        <div class="card-tag">04 — FCC</div>
+        <h2>Amateur Radio — FCC Part 97</h2>
+        <p class="card-desc">
+          Purpose of the amateur radio service, license classes and privileges, call sign
+          structure, key frequency allocations (2m, 70cm, 40m, 20m, 80m), operating rules
+          (§97.119 identification), emergency provisions (§97.401&ndash;§97.407, RACES), ARES
+          and SKYWARN, phonetic alphabet, Q codes, and basic antenna theory.
+        </p>
+        <div class="card-source">Source: FCC 47 CFR Part 97 &bull; US Gov. public domain</div>
+      </a>
+
+      <a class="topic-card" href="well-water.md">
+        <div class="card-tag">05 — EPA</div>
+        <h2>Private Well Water Safety</h2>
+        <p class="card-desc">
+          Why to test your well, common contaminants and health effects (coliform bacteria,
+          nitrates, lead, arsenic, radon, VOCs), visual/smell/taste indicators, testing
+          schedule and triggers, EPA shock chlorination procedure, emergency water treatment
+          (boiling, bleach, iodine), annual inspection checklist, and finding certified labs.
+        </p>
+        <div class="card-source">Source: EPA Private Water Systems guidance &bull; US Gov. public domain</div>
+      </a>
+
+      <a class="topic-card" href="knots.md">
+        <div class="card-tag">06 — US Navy</div>
+        <h2>Practical Knots</h2>
+        <p class="card-desc">
+          Ten essential knots with ASCII step diagrams: overhand, figure-eight, square knot,
+          sheet bend, bowline ("king of knots"), clove hitch, half hitch and two half hitches,
+          taut-line hitch, rolling hitch, and fisherman's knot. Use case, strength
+          characteristics, and how to untie each.
+        </p>
+        <div class="card-source">Source: US Navy seamanship manuals, pre-1928 &bull; Public domain</div>
+      </a>
+
+    </div>
+
+    <div class="attribution">
+      <h3>Public Domain Attribution</h3>
+      <p>
+        All content in this field manual is sourced from US Government works or pre-1928
+        published works. US Government works are public domain per 17&nbsp;U.S.C.&nbsp;&sect;&nbsp;105.
+        Sources: FM&nbsp;21-76 (US Army), FEMA&nbsp;CERT training program (US Dept. of Homeland
+        Security), USDA Agricultural Research Service and USDA Forest Service publications,
+        FCC 47&nbsp;CFR Part&nbsp;97 (federal regulation, public domain), EPA Private Water Systems
+        guidance (US Environmental Protection Agency), and US Navy seamanship manuals
+        (pre-1928 editions, public domain under pre-1976 copyright law).
+      </p>
+    </div>
+
+    <div class="ref-links">
+      <h3>About this directory</h3>
+      <a href="NOTICE.md">NOTICE.md &mdash; full source attribution</a>
+      <a href="README.md">README.md &mdash; maintainer notes</a>
+    </div>
+  </main>
+</div>
+
+<script>
+  (function () {
+    var toggle = document.getElementById('menuToggle');
+    var sidebar = document.getElementById('sidebar');
+    var overlay = document.getElementById('sidebarOverlay');
+
+    function openSidebar() {
+      sidebar.classList.add('open');
+      overlay.classList.add('open');
+      toggle.setAttribute('aria-expanded', 'true');
+    }
+
+    function closeSidebar() {
+      sidebar.classList.remove('open');
+      overlay.classList.remove('open');
+      toggle.setAttribute('aria-expanded', 'false');
+    }
+
+    toggle.addEventListener('click', function () {
+      if (sidebar.classList.contains('open')) {
+        closeSidebar();
+      } else {
+        openSidebar();
+      }
+    });
+
+    overlay.addEventListener('click', closeSidebar);
+
+    sidebar.querySelectorAll('a').forEach(function (link) {
+      link.addEventListener('click', function () {
+        if (window.innerWidth <= 700) {
+          closeSidebar();
+        }
+      });
+    });
+  })();
+</script>
+
+</body>
+</html>

@@ -134,6 +134,14 @@ at ~22.3 GB on top.
 
 **Why GPL everywhere for ffmpeg (not LGPL):** The kit's cross-OS axiom — same files work on Linux, macOS, and Windows — requires a pre-built static ffmpeg for each OS that includes h264/h265 encode. No LGPL-licensed static ffmpeg binary exists for macOS Apple Silicon: evermeet.cx ships Intel-only GPL builds; Martin-Riedl ships macOS arm64 builds under GPL-3.0+. Forcing LGPL would mean either (a) no Mac arm64 support, or (b) no h264/h265 encode on Mac, or (c) an asymmetric per-OS license matrix that is confusing to document and error-prone to maintain. A single GPL-3.0+ boundary for the entire ffmpeg side-arm — mirroring the `doom/` GPL-2.0 precedent — is the cleanest solution. The ffmpeg license boundary is documented in `ai-kit/ffmpeg/LICENSE` and linked from [`docs/ffmpeg-guide.md`](ffmpeg-guide.md).
 
+### v0.12 (2026-05-10) — Portable dev tools + TLS cert bundle + Field manual
+
+| Item | Size | Notes |
+|------|------|-------|
+| Portable dev tools (ripgrep/fzf/jq/7-Zip/VSCodium) | ~280 MB cross-OS | MIT + LGPL-2.1. `start-devtools.*` PATH-primer launcher. PortableGit deferred to v0.12.1. |
+| Mozilla CA bundle (cacert.pem) | ~226 KB | MPL-2.0. Always-on. `curl --cacert ./cacert.pem` for offline HTTPS. |
+| Field manual corpus | ~240 KB committed | US gov works PD per 17 U.S.C. § 105 + pre-1928 sources. `field-manual/index.html` mobile-browseable. |
+
 ---
 
 ## Pending — high payoff (next picks)
@@ -150,7 +158,6 @@ Ranked by "value per gigabyte" given the prepper / off-grid framing.
 | **Bigger Wikipedia ZIMs** | up to ~50 GB | The launcher already picks up any `zim/*.zim`. Add a build-script flag to fetch `wikipedia_en_top_nopic` (~6 GB) or the full `wikipedia_en_all_nopic` (~50 GB). |
 | **Multilingual Kiwix** | varies | Per-language ZIM selection. Build script needs a config knob. |
 | **Bootable rescue ISOs + Ventoy** | 5–20 GB | Currently BYO. Could pre-populate `iso/` and ship a Ventoy installer. |
-| **Portable dev tools bundle** | ~200 MB | PortableGit, ripgrep, fzf, jq, 7-Zip, VS Code Portable. Currently BYO. |
 
 ---
 
@@ -159,29 +166,12 @@ Ranked by "value per gigabyte" given the prepper / off-grid framing.
 Items not in the original §09 menu but worth scoping next time we sit
 with the backlog.
 
-### Offline TLS root certificate bundle
-
-Most of the offline stack is HTTP, but the moment any side arm reaches
-to an upstream server (air-gap testing, RSS reader, etc.) you need a
-local CA bundle. Ship `cacert.pem` from `curl.se/ca/cacert.pem`
-(~250 KB) under `ai-kit/certs/` so anything we add later that does
-HTTPS has a sane default.
-
 ### Per-OS portable browser (Firefox / Chromium)
 
 Hollama, our OCR page, the Kiwix UI, and DevDocs all run in the host's
 browser. If the host doesn't have one (cleanroom recovery scenario),
 a bundled portable browser is a ~120 MB add per OS. Three OSes = ~360
 MB total. Trade-off: real survival utility vs. sizeable disk hit.
-
-### "Field manual" markdown corpus
-
-The DOOMSTICK marketing leans hard on the prepper framing but the kit
-doesn't actually ship any survival reference material. A small curated
-markdown bundle (~50 MB) with first-aid, knot-tying, edible-plants,
-amateur-radio basics, hand-pumped well diagnostics, etc., would be
-high-signal for the prepper audience. Either curated by us or pulled
-from public-domain field manuals (USACE, Red Cross PDFs).
 
 ### Hardware diagnostic toolkit
 

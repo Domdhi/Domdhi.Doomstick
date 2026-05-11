@@ -22,6 +22,7 @@ USB root (D:\, /mnt/usb, /Volumes/USB, …)
 ├── start-img.bat / .command / .sh        sd-cli image gen (FLUX.2 klein, no port)
 ├── start-passwords.bat / .command / .sh  KeePassXC GUI password manager
 ├── start-ffmpeg.bat / .command / .sh     ffmpeg + ffprobe PATH-primer shell, no port
+├── start-devtools.bat / .command / .sh   dev tools PATH-primer shell (ripgrep / fzf / jq / 7-Zip / VSCodium)
 ├── ai-kit/
 │   ├── runtime/                          llamafile 0.10.1 (43 MB APE polyglot, byte-identical
 │   │                                     across OSes; .exe-renamed copy for Windows double-click)
@@ -57,10 +58,16 @@ USB root (D:\, /mnt/usb, /Volumes/USB, …)
 │   │   ├── linux/
 │   │   ├── mac/
 │   │   └── win/
-│   └── ffmpeg/                           v0.11+ — ffmpeg + ffprobe per-OS (GPL-3.0+)
-│       ├── linux/
-│       ├── mac/
-│       └── win/
+│   ├── ffmpeg/                           v0.11+ — ffmpeg + ffprobe per-OS (GPL-3.0+)
+│   │   ├── linux/
+│   │   ├── mac/
+│   │   └── win/
+│   ├── devtools/                         v0.12+ — portable dev tools per-OS (MIT + LGPL-2.1)
+│   │   ├── linux/                        rg, fzf, jq, 7zzs (static), vscode/codium
+│   │   ├── mac/                          rg, fzf, jq, 7zz (static, no trailing s), vscode/VSCodium.app
+│   │   └── win/                          rg.exe, fzf.exe, jq.exe, 7za.exe, vscode/VSCodium.exe
+│   └── certs/                            v0.12+ — Mozilla CA bundle (MPL-2.0, always-on)
+│       └── cacert.pem                    ~226 KB · TLS root bundle · re-fetched on each build
 ├── chat/                                 v0.8+ — Vendored Hollama 0.35.4 SPA + 5 adapter files
 ├── doom/                                 v0.5+ — Dwasm bundle + shareware DOOM1.WAD (GPL-2.0)
 ├── workspace/                            v0.8+ — RAG corpus root
@@ -74,6 +81,10 @@ USB root (D:\, /mnt/usb, /Volumes/USB, …)
 ├── passwords/                            v0.11+ — KeePassXC database root
 │   ├── README.txt                        setup guide + creation ceremony
 │   └── vault.kdbx                        (user-created on first run)
+├── field-manual/                         v0.12+ — public-domain offline reference corpus
+│   ├── index.html                        browseable index (file://, mobile-friendly)
+│   ├── *.md                              six topic files (survival, first-aid, plants, radio, water, knots)
+│   └── NOTICE.md                         PD attribution + excluded sources list
 ├── zim/                                  Wikipedia archives (default: Simple English ~921 MB)
 ├── ocr/                                  v0.4+ — Tesseract.js bundle + lang-data (English ~4 MB)
 ├── maps/                                 OSM .pbf files (default: Monaco; sideload to phone app)
@@ -88,8 +99,8 @@ custom path:
 | Bundle      | Size     | Contents                                                                                   |
 |-------------|----------|--------------------------------------------------------------------------------------------|
 | `tiny`      | ~5.4 GB  | E4B + Simple Wikipedia. No maps, no voice, no DOOM, no TTS, no image gen.                  |
-| `balanced`  | ~6.75 GB | E4B + Embed + Simple Wikipedia + Monaco maps + all side-arms + redbean + DOOM + TTS + KeePassXC password manager. |
-| `full`      | ~29.1 GB | Everything — all four models + all side-arms + redbean + DOOM + TTS + vault + image gen + KeePassXC + ffmpeg.     |
+| `balanced`  | ~7.03 GB | E4B + Embed + Simple Wikipedia + Monaco maps + all side-arms + redbean + DOOM + TTS + KeePassXC password manager + DevTools (5 tools) + Field manual. |
+| `full`      | ~29.4 GB | Everything — all four models + all side-arms + redbean + DOOM + TTS + vault + image gen + KeePassXC + ffmpeg + DevTools (5 tools) + Field manual.     |
 
 `bundle=full` and `-y` (non-interactive) produce byte-identical state — keep
 `presets/bundles.tsv`'s `full` row in lockstep with bash `apply_baked_defaults()`.

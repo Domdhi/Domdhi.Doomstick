@@ -224,6 +224,31 @@ SIDE ARMS (shipped with the kit)
                                     frames). No port, no server.
                                     GPL-3.0+. ~210 MB cross-OS.
 
+  start-devtools.{bat,command,sh}   Adds ripgrep, fzf, jq, 7-Zip, and
+                                    VSCodium to PATH then drops into an
+                                    interactive shell. Type rg, fzf, jq,
+                                    7zzs/7zz/7za, or codium directly. No
+                                    port. Mixed licenses (MIT for rg/fzf/
+                                    jq/VSCodium; LGPL-2.1 for 7-Zip).
+                                    PortableGit deferred to v0.12.1.
+                                    ~280 MB cross-OS. ai-kit/devtools/.
+
+  field-manual/index.html           Public-domain offline reference
+                                    library: survival basics (FM 21-76),
+                                    FEMA CERT first aid, edible plants,
+                                    FCC Part 97 amateur radio, EPA well
+                                    water, pre-1928 knots. Open in any
+                                    browser via file://. Add your own .md
+                                    files to field-manual/ to extend it.
+                                    All US Government works (PD per
+                                    17 U.S.C. § 105) + pre-1928 sources.
+
+  ai-kit/certs/cacert.pem           Mozilla CA certificate bundle
+                                    (~226 KB, MPL-2.0). Always-on (no
+                                    toggle). Use with:
+                                      curl --cacert ./cacert.pem https://...
+                                    or REQUESTS_CA_BUNDLE=./cacert.pem
+
   chat\index.html                   Vendored Hollama 0.35.4 chat UI with
                                     workspace/RAG/journal/session adapters.
                                     Open as a file:// in any modern
@@ -248,8 +273,6 @@ siblings:
   *.iso       Bootable rescue media (Ubuntu, SystemRescue, Hiren's BootCD).
               Add Ventoy (https://www.ventoy.net/) to make the stick
               boot-menu its own ISO collection.
-  tools\      Portable Windows utilities (PortableGit, VS Code Portable,
-              ripgrep, fzf, jq, 7-Zip).
 
 See README.md in the source repo and docs/auxiliary-roadmap.md for the
 full pending menu and per-item rationale.

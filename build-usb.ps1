@@ -122,6 +122,8 @@ function Apply-BakedDefaults {
     $script:DoomIncludeImg      = 1
     $script:DoomIncludePasswords = 1
     $script:DoomIncludeFfmpeg   = 1
+    $script:DoomIncludeDevtools    = 1
+    $script:DoomIncludeFieldmanual = 1
 }
 
 # ---------------------------------------------------------------- TSV loader
@@ -221,10 +223,11 @@ function Apply-Bundle {
     $rows = Import-Tsv (Join-Path $Presets 'bundles.tsv')
     $row = $rows | Where-Object { $_[0] -eq $Name } | Select-Object -First 1
     if (-not $row) { Write-Error "Unknown bundle: $Name"; exit 2 }
-    # Schema (v0.11, 21 columns):
+    # Schema (v0.12, 23 columns):
     #   0 name  1 label  2 e4b  3 moe  4 emb  5 wiki  6 osm  7 whisper  8 ocr  9 docs
     #   10 redbean  11 doom  12 tts  13 img  14 passwords  15 ffmpeg
-    #   16 zim_idx  17 osm_idx  18 whisper_idx  19 estimated_bytes  20 summary
+    #   16 devtools  17 fieldmanual
+    #   18 zim_idx  19 osm_idx  20 whisper_idx  21 estimated_bytes  22 summary
     $script:DoomIncludeE4b       = [int]$row[2]
     $script:DoomIncludeMoe       = [int]$row[3]
     $script:DoomIncludeEmb       = [int]$row[4]
@@ -238,10 +241,12 @@ function Apply-Bundle {
     $script:DoomIncludeTts       = [int]$row[12]
     $script:DoomIncludeImg       = [int]$row[13]
     $script:DoomIncludePasswords = [int]$row[14]
-    $script:DoomIncludeFfmpeg    = [int]$row[15]
-    $zimIdx     = [int]$row[16]
-    $osmIdx     = [int]$row[17]
-    $whisperIdx = [int]$row[18]
+    $script:DoomIncludeFfmpeg      = [int]$row[15]
+    $script:DoomIncludeDevtools    = [int]$row[16]
+    $script:DoomIncludeFieldmanual = [int]$row[17]
+    $zimIdx     = [int]$row[18]
+    $osmIdx     = [int]$row[19]
+    $whisperIdx = [int]$row[20]
 
     if ($DoomIncludeWiki -eq 1 -and $zimIdx -ge 1) {
         $z = (Import-Tsv (Join-Path $Presets 'zim.tsv'))[$zimIdx-1]
@@ -422,6 +427,20 @@ function Invoke-Wizard {
     } else {
         $script:DoomIncludeFfmpeg = 0
     }
+
+    # 13. Dev tools — ripgrep + fzf + jq + 7-Zip + VSCodium
+    if (Read-YesNo 'Include portable dev tools (ripgrep, fzf, jq, 7-Zip, VSCodium, ~280 MB)?' 'Y') {
+        $script:DoomIncludeDevtools = 1
+    } else {
+        $script:DoomIncludeDevtools = 0
+    }
+
+    # 14. Field manual — public-domain corpus
+    if (Read-YesNo 'Include field manual corpus (public-domain survival/first-aid/radio, ~1 MB)?' 'Y') {
+        $script:DoomIncludeFieldmanual = 1
+    } else {
+        $script:DoomIncludeFieldmanual = 0
+    }
 }
 
 # ---------------------------------------------------------------- estimate / free space
@@ -445,6 +464,8 @@ function Get-EstimatedTotalBytes {
     if ($DoomIncludeImg -eq 1)     { $total += 2646469190 } # sd.cpp 3-OS (~42 MB) + FLUX.2 klein 4B Q4_K_M (~2.6 GB)
     if ($DoomIncludePasswords -eq 1) { $total += 250000000 } # KeePassXC 3-OS (~47 MB AppImage + ~36 MB dmg + ~35 MB zip + extracted)
     if ($DoomIncludeFfmpeg    -eq 1) { $total += 210000000 } # ffmpeg 3-OS (~117 MB linux64 + ~28 MB mac + ~157 MB win)
+    if ($DoomIncludeDevtools    -eq 1) { $total += 280000000 }  # devtools 5-tool cross-OS (VSCodium dominates ~240 MB)
+    if ($DoomIncludeFieldmanual -eq 1) { $total += 1000000   }  # field-manual margin for user additions
     return $total
 }
 
@@ -480,6 +501,8 @@ function Show-SummaryAndConfirm {
     Write-Host ("  {0,-12} {1}" -f 'Img gen:',   $(if ($DoomIncludeImg -eq 1) { 'included (sd.cpp + FLUX.2 klein 4B Q4_K_M)' } else { '(skipped)' }))
     Write-Host ("  {0,-12} {1}" -f 'Passwords:', $(if ($DoomIncludePasswords -eq 1) { 'included (KeePassXC password manager)' } else { '(skipped)' }))
     Write-Host ("  {0,-12} {1}" -f 'ffmpeg:',    $(if ($DoomIncludeFfmpeg -eq 1) { 'included (static ffmpeg, cross-OS media swiss-army)' } else { '(skipped)' }))
+    Write-Host ("  {0,-12} {1}" -f 'Dev tools:',    $(if ($DoomIncludeDevtools    -eq 1) { 'included (ripgrep / fzf / jq / 7-Zip / VSCodium)' } else { '(skipped)' }))
+    Write-Host ("  {0,-12} {1}" -f 'Field manual:', $(if ($DoomIncludeFieldmanual -eq 1) { 'included (public-domain corpus)' } else { '(skipped)' }))
     Write-Host ''
     Write-Host ("  Estimated download: {0}" -f (Format-Bytes $needed))
     if ($free -gt 0) {
@@ -539,6 +562,8 @@ function Write-Config {
 `$DoomIncludeImg      = $DoomIncludeImg
 `$DoomIncludePasswords = $DoomIncludePasswords
 `$DoomIncludeFfmpeg   = $DoomIncludeFfmpeg
+`$DoomIncludeDevtools    = $DoomIncludeDevtools
+`$DoomIncludeFieldmanual = $DoomIncludeFieldmanual
 "@
     Set-Content -LiteralPath $Path -Value $content -NoNewline:$false
     Write-Host "  [save] wrote config: $Path"
@@ -607,6 +632,11 @@ $KeePassWinDir = Join-Path $Target 'ai-kit\keepassxc\win'
 $FfmpegLinDir  = Join-Path $Target 'ai-kit\ffmpeg\linux'
 $FfmpegMacDir  = Join-Path $Target 'ai-kit\ffmpeg\mac'
 $FfmpegWinDir  = Join-Path $Target 'ai-kit\ffmpeg\win'
+$DevtoolsLinDir = Join-Path $Target 'ai-kit\devtools\linux'
+$DevtoolsMacDir = Join-Path $Target 'ai-kit\devtools\mac'
+$DevtoolsWinDir = Join-Path $Target 'ai-kit\devtools\win'
+$CertsDir       = Join-Path $Target 'ai-kit\certs'
+$FieldManualDir = Join-Path $Target 'field-manual'
 $VaultDir      = Join-Path $Target 'vault'
 $ZimDir        = Join-Path $Target 'zim'
 $MapsDir       = Join-Path $Target 'maps'
@@ -627,6 +657,8 @@ foreach ($d in @($RuntimeDir, $ModelsDir, $WhisperDir, $KiwixWinDir, $KiwixLinDi
                  $AgeLinDir, $AgeMacDir, $AgeWinDir,
                  $KeePassLinDir, $KeePassMacDir, $KeePassWinDir,
                  $FfmpegLinDir, $FfmpegMacDir, $FfmpegWinDir,
+                 $DevtoolsLinDir, $DevtoolsMacDir, $DevtoolsWinDir,
+                 $CertsDir, $FieldManualDir,
                  $VaultDir,
                  $ZimDir, $MapsDir, $OcrLibDir, $OcrLangDir, $DocsDir, $DoomDir,
                  $ChatDir, $WorkspaceDir, $WsDocsDir, $WsJournalDir, $WsInboxDir)) {
@@ -1175,6 +1207,55 @@ $FfmpegMacBytes      = 28950528
 $FfmpegWinUrl        = "https://github.com/BtbN/FFmpeg-Builds/releases/download/latest/ffmpeg-${FfmpegVersion}-latest-win64-gpl-7.1.zip"
 $FfmpegWinBytes      = 164626432
 
+$RipgrepVersion       = '14.1.1'
+$RipgrepLinux64Url    = "https://github.com/BurntSushi/ripgrep/releases/download/$RipgrepVersion/ripgrep-$RipgrepVersion-x86_64-unknown-linux-musl.tar.gz"
+$RipgrepLinux64Bytes  = 2621440
+$RipgrepLinuxArm64Url = "https://github.com/BurntSushi/ripgrep/releases/download/$RipgrepVersion/ripgrep-$RipgrepVersion-aarch64-unknown-linux-gnu.tar.gz"
+$RipgrepLinuxArm64Bytes = 2621440
+$RipgrepMacUrl        = "https://github.com/BurntSushi/ripgrep/releases/download/$RipgrepVersion/ripgrep-$RipgrepVersion-aarch64-apple-darwin.tar.gz"
+$RipgrepMacBytes      = 2097152
+$RipgrepWinUrl        = "https://github.com/BurntSushi/ripgrep/releases/download/$RipgrepVersion/ripgrep-$RipgrepVersion-x86_64-pc-windows-msvc.zip"
+$RipgrepWinBytes      = 2621440
+
+$FzfVersion           = '0.61.3'
+$FzfLinux64Url        = "https://github.com/junegunn/fzf/releases/download/$FzfVersion/fzf-$FzfVersion-linux_amd64.tar.gz"
+$FzfLinux64Bytes      = 3670016
+$FzfLinuxArm64Url     = "https://github.com/junegunn/fzf/releases/download/$FzfVersion/fzf-$FzfVersion-linux_arm64.tar.gz"
+$FzfLinuxArm64Bytes   = 3670016
+$FzfMacUrl            = "https://github.com/junegunn/fzf/releases/download/$FzfVersion/fzf-$FzfVersion-darwin_arm64.tar.gz"
+$FzfMacBytes          = 3670016
+$FzfWinUrl            = "https://github.com/junegunn/fzf/releases/download/$FzfVersion/fzf-$FzfVersion-windows_amd64.zip"
+$FzfWinBytes          = 3670016
+
+$JqVersion            = '1.7.1'
+$JqLinux64Url         = "https://github.com/jqlang/jq/releases/download/jq-$JqVersion/jq-linux-amd64"
+$JqLinux64Bytes       = 2097152
+$JqLinuxArm64Url      = "https://github.com/jqlang/jq/releases/download/jq-$JqVersion/jq-linux-arm64"
+$JqLinuxArm64Bytes    = 2097152
+$JqMacUrl             = "https://github.com/jqlang/jq/releases/download/jq-$JqVersion/jq-macos-arm64"
+$JqMacBytes           = 2097152
+$JqWinUrl             = "https://github.com/jqlang/jq/releases/download/jq-$JqVersion/jq-windows-amd64.exe"
+$JqWinBytes           = 2097152
+
+$SevenZipVersion      = '2409'
+$SevenZipLinuxUrl     = "https://www.7-zip.org/a/7z$($SevenZipVersion)-linux-x64.tar.xz"
+$SevenZipLinuxBytes   = 1048576
+$SevenZipMacUrl       = "https://www.7-zip.org/a/7z$($SevenZipVersion)-mac-arm64.tar.xz"
+$SevenZipMacBytes     = 1048576
+$SevenZipWinUrl       = 'https://www.7-zip.org/a/7zr.exe'
+$SevenZipWinBytes     = 520000
+
+$VSCodiumVersion      = '1.99.3'
+$VSCodiumLinuxUrl     = "https://github.com/VSCodium/vscodium/releases/download/$VSCodiumVersion/VSCodium-linux-x64-$VSCodiumVersion.tar.gz"
+$VSCodiumLinuxBytes   = 90177536
+$VSCodiumMacUrl       = "https://github.com/VSCodium/vscodium/releases/download/$VSCodiumVersion/VSCodium-darwin-arm64-$VSCodiumVersion.zip"
+$VSCodiumMacBytes     = 90177536
+$VSCodiumWinUrl       = "https://github.com/VSCodium/vscodium/releases/download/$VSCodiumVersion/VSCodiumPortable_$($VSCodiumVersion)_x64.zip"
+$VSCodiumWinBytes     = 90177536
+
+$CacertUrl            = 'https://curl.se/ca/cacert.pem'
+$CacertBytes          = 226168
+
 if ($DoomIncludeImg -eq 1) {
     Write-Host ''
     Write-Host "==> image gen (sd.cpp $ImgVersion + FLUX.2 klein)"
@@ -1449,6 +1530,196 @@ if ($DoomIncludeFfmpeg -eq 1) {
     Copy-Item -LiteralPath (Join-Path $Repo 'licenses\ffmpeg-LICENSE-GPL-3.0') -Destination (Join-Path $Target 'ai-kit\ffmpeg\LICENSE-GPL-3.0') -Force
 }
 
+# ---------------------------------------------------------------- devtools (ripgrep + fzf + jq + 7-Zip + VSCodium)
+
+if ($DoomIncludeDevtools -eq 1) {
+    Write-Host ''
+    Write-Host "==> devtools (ripgrep $RipgrepVersion + fzf $FzfVersion + jq $JqVersion + 7-Zip $SevenZipVersion + VSCodium $VSCodiumVersion)"
+
+    # ripgrep Linux x64
+    if (-not (Test-Path (Join-Path $DevtoolsLinDir 'rg'))) {
+        $tmp = "$env:TEMP\rg-linux64.tar.gz"
+        Get-File -Url $RipgrepLinux64Url -Dest $tmp -Expected $RipgrepLinux64Bytes -Label "ripgrep $RipgrepVersion linux-x64-musl"
+        $stg = "$env:TEMP\rg-linux64-stage"; New-Item -ItemType Directory -Force $stg | Out-Null
+        tar.exe -xzf $tmp -C $stg --strip-components=1
+        Move-Item (Join-Path $stg 'rg') (Join-Path $DevtoolsLinDir 'rg') -Force
+        Remove-Item $tmp, $stg -Recurse -Force -ErrorAction SilentlyContinue
+    } else { Write-Host '  [skip] ripgrep linux already present' }
+
+    # ripgrep macOS arm64
+    if (-not (Test-Path (Join-Path $DevtoolsMacDir 'rg'))) {
+        $tmp = "$env:TEMP\rg-mac.tar.gz"
+        Get-File -Url $RipgrepMacUrl -Dest $tmp -Expected $RipgrepMacBytes -Label "ripgrep $RipgrepVersion mac-arm64"
+        $stg = "$env:TEMP\rg-mac-stage"; New-Item -ItemType Directory -Force $stg | Out-Null
+        tar.exe -xzf $tmp -C $stg --strip-components=1
+        Move-Item (Join-Path $stg 'rg') (Join-Path $DevtoolsMacDir 'rg') -Force
+        Remove-Item $tmp, $stg -Recurse -Force -ErrorAction SilentlyContinue
+    } else { Write-Host '  [skip] ripgrep mac already present' }
+
+    # ripgrep Windows
+    if (-not (Test-Path (Join-Path $DevtoolsWinDir 'rg.exe'))) {
+        $tmp = "$env:TEMP\rg-win.zip"
+        Get-File -Url $RipgrepWinUrl -Dest $tmp -Expected $RipgrepWinBytes -Label "ripgrep $RipgrepVersion win-x64"
+        Expand-Archive -Path $tmp -DestinationPath "$env:TEMP\rg-win-stage" -Force
+        $rgExe = Get-ChildItem "$env:TEMP\rg-win-stage" -Recurse -Filter 'rg.exe' | Select-Object -First 1
+        if ($rgExe) { Copy-Item $rgExe.FullName (Join-Path $DevtoolsWinDir 'rg.exe') }
+        Remove-Item $tmp, "$env:TEMP\rg-win-stage" -Recurse -Force -ErrorAction SilentlyContinue
+    } else { Write-Host '  [skip] ripgrep windows already present' }
+
+    # fzf Linux x64
+    if (-not (Test-Path (Join-Path $DevtoolsLinDir 'fzf'))) {
+        $tmp = "$env:TEMP\fzf-linux64.tar.gz"
+        Get-File -Url $FzfLinux64Url -Dest $tmp -Expected $FzfLinux64Bytes -Label "fzf $FzfVersion linux-amd64"
+        tar.exe -xzf $tmp -C $DevtoolsLinDir fzf
+        Remove-Item $tmp -Force -ErrorAction SilentlyContinue
+    } else { Write-Host '  [skip] fzf linux already present' }
+
+    # fzf macOS arm64
+    if (-not (Test-Path (Join-Path $DevtoolsMacDir 'fzf'))) {
+        $tmp = "$env:TEMP\fzf-mac.tar.gz"
+        Get-File -Url $FzfMacUrl -Dest $tmp -Expected $FzfMacBytes -Label "fzf $FzfVersion darwin-arm64"
+        tar.exe -xzf $tmp -C $DevtoolsMacDir fzf
+        Remove-Item $tmp -Force -ErrorAction SilentlyContinue
+    } else { Write-Host '  [skip] fzf mac already present' }
+
+    # fzf Windows
+    if (-not (Test-Path (Join-Path $DevtoolsWinDir 'fzf.exe'))) {
+        $tmp = "$env:TEMP\fzf-win.zip"
+        Get-File -Url $FzfWinUrl -Dest $tmp -Expected $FzfWinBytes -Label "fzf $FzfVersion windows-amd64"
+        Expand-Archive -Path $tmp -DestinationPath $DevtoolsWinDir -Force
+        Remove-Item $tmp -Force -ErrorAction SilentlyContinue
+    } else { Write-Host '  [skip] fzf windows already present' }
+
+    # jq — single-file binaries
+    if (-not (Test-Path (Join-Path $DevtoolsLinDir 'jq'))) {
+        Get-File -Url $JqLinux64Url -Dest (Join-Path $DevtoolsLinDir 'jq') -Expected $JqLinux64Bytes -Label "jq $JqVersion linux-amd64"
+    } else { Write-Host '  [skip] jq linux already present' }
+
+    if (-not (Test-Path (Join-Path $DevtoolsMacDir 'jq'))) {
+        Get-File -Url $JqMacUrl -Dest (Join-Path $DevtoolsMacDir 'jq') -Expected $JqMacBytes -Label "jq $JqVersion macos-arm64"
+    } else { Write-Host '  [skip] jq mac already present' }
+
+    if (-not (Test-Path (Join-Path $DevtoolsWinDir 'jq.exe'))) {
+        Get-File -Url $JqWinUrl -Dest (Join-Path $DevtoolsWinDir 'jq.exe') -Expected $JqWinBytes -Label "jq $JqVersion windows-amd64"
+    } else { Write-Host '  [skip] jq windows already present' }
+
+    # 7-Zip Linux
+    if (-not (Test-Path (Join-Path $DevtoolsLinDir '7zzs'))) {
+        $tmp = "$env:TEMP\7z-linux.tar.xz"
+        Get-File -Url $SevenZipLinuxUrl -Dest $tmp -Expected $SevenZipLinuxBytes -Label "7-Zip $SevenZipVersion linux-x64"
+        $stg = "$env:TEMP\7z-linux-stage"; New-Item -ItemType Directory -Force $stg | Out-Null
+        tar.exe -xf $tmp -C $stg
+        $bin = Get-ChildItem $stg -Filter '7zzs' -Recurse | Select-Object -First 1
+        if (-not $bin) { $bin = Get-ChildItem $stg -Filter '7zz' -Recurse | Select-Object -First 1 }
+        if ($bin) { Copy-Item $bin.FullName (Join-Path $DevtoolsLinDir '7zzs') }
+        Remove-Item $tmp, $stg -Recurse -Force -ErrorAction SilentlyContinue
+    } else { Write-Host '  [skip] 7-Zip linux already present' }
+
+    # 7-Zip macOS (name is 7zz, NOT 7zzs — upstream naming inconsistency)
+    if (-not (Test-Path (Join-Path $DevtoolsMacDir '7zz'))) {
+        $tmp = "$env:TEMP\7z-mac.tar.xz"
+        Get-File -Url $SevenZipMacUrl -Dest $tmp -Expected $SevenZipMacBytes -Label "7-Zip $SevenZipVersion mac-arm64"
+        $stg = "$env:TEMP\7z-mac-stage"; New-Item -ItemType Directory -Force $stg | Out-Null
+        tar.exe -xf $tmp -C $stg
+        $bin = Get-ChildItem $stg -Filter '7zz' -Recurse | Select-Object -First 1
+        if ($bin) { Copy-Item $bin.FullName (Join-Path $DevtoolsMacDir '7zz') }
+        Remove-Item $tmp, $stg -Recurse -Force -ErrorAction SilentlyContinue
+    } else { Write-Host '  [skip] 7-Zip mac already present' }
+
+    # 7-Zip Windows — fetch 7zr.exe (single-file, free CLI extractor) as 7za.exe
+    if (-not (Test-Path (Join-Path $DevtoolsWinDir '7za.exe'))) {
+        Get-File -Url $SevenZipWinUrl -Dest (Join-Path $DevtoolsWinDir '7za.exe') -Expected $SevenZipWinBytes -Label "7-Zip $SevenZipVersion win (7zr.exe portable)"
+    } else { Write-Host '  [skip] 7-Zip windows already present' }
+
+    # VSCodium Linux
+    $vscLinBin = Join-Path $DevtoolsLinDir 'vscode\codium'
+    if (-not (Test-Path $vscLinBin)) {
+        $vscLinDir = Join-Path $DevtoolsLinDir 'vscode'
+        New-Item -ItemType Directory -Force $vscLinDir | Out-Null
+        $tmp = "$env:TEMP\vscodium-linux.tar.gz"
+        Get-File -Url $VSCodiumLinuxUrl -Dest $tmp -Expected $VSCodiumLinuxBytes -Label "VSCodium $VSCodiumVersion linux-x64"
+        tar.exe -xzf $tmp -C $vscLinDir
+        New-Item -ItemType Directory -Force (Join-Path $vscLinDir 'data') | Out-Null
+        Remove-Item $tmp -Force -ErrorAction SilentlyContinue
+    } else { Write-Host '  [skip] VSCodium linux already present' }
+
+    # VSCodium macOS
+    $vscMacApp = Join-Path $DevtoolsMacDir 'vscode\VSCodium.app'
+    if (-not (Test-Path $vscMacApp)) {
+        $vscMacDir = Join-Path $DevtoolsMacDir 'vscode'
+        New-Item -ItemType Directory -Force $vscMacDir | Out-Null
+        $tmp = "$env:TEMP\vscodium-mac.zip"
+        Get-File -Url $VSCodiumMacUrl -Dest $tmp -Expected $VSCodiumMacBytes -Label "VSCodium $VSCodiumVersion darwin-arm64"
+        Expand-Archive -Path $tmp -DestinationPath $vscMacDir -Force
+        New-Item -ItemType Directory -Force (Join-Path $vscMacDir 'data') | Out-Null
+        Remove-Item $tmp -Force -ErrorAction SilentlyContinue
+    } else { Write-Host '  [skip] VSCodium mac already present' }
+
+    # VSCodium Windows
+    $vscWinExe = Join-Path $DevtoolsWinDir 'vscode\VSCodium.exe'
+    $vscWinExe2 = Join-Path $DevtoolsWinDir 'vscode\codium.exe'
+    if (-not (Test-Path $vscWinExe) -and -not (Test-Path $vscWinExe2)) {
+        $vscWinDir = Join-Path $DevtoolsWinDir 'vscode'
+        New-Item -ItemType Directory -Force $vscWinDir | Out-Null
+        $tmp = "$env:TEMP\vscodium-win.zip"
+        Get-File -Url $VSCodiumWinUrl -Dest $tmp -Expected $VSCodiumWinBytes -Label "VSCodium $VSCodiumVersion win-x64-portable"
+        Expand-Archive -Path $tmp -DestinationPath $vscWinDir -Force
+        New-Item -ItemType Directory -Force (Join-Path $vscWinDir 'data') | Out-Null
+        Remove-Item $tmp -Force -ErrorAction SilentlyContinue
+    } else { Write-Host '  [skip] VSCodium windows already present' }
+}
+
+# ---------------------------------------------------------------- certs (always-on)
+
+Write-Host ''
+Write-Host '==> certs (Mozilla CA bundle)'
+New-Item -ItemType Directory -Force $CertsDir | Out-Null
+$cacertDest = Join-Path $CertsDir 'cacert.pem'
+if (-not (Test-Path $cacertDest)) {
+    Get-File -Url $CacertUrl -Dest $cacertDest -Expected $CacertBytes -Label 'Mozilla CA bundle (cacert.pem)'
+} else { Write-Host '  [skip] cacert.pem already present' }
+$certReadme = Join-Path $CertsDir 'README.txt'
+if (-not (Test-Path $certReadme)) {
+    Set-Content -Path $certReadme -Value @'
+Mozilla CA Certificate Bundle
+==============================
+File: cacert.pem   (~226 KB, MPL-2.0, from curl.se/docs/caextract.html)
+
+Use with curl:
+  curl --cacert "%ROOT%\ai-kit\certs\cacert.pem" https://example.com
+
+Use with Python/requests:
+  set REQUESTS_CA_BUNDLE=%ROOT%\ai-kit\certs\cacert.pem
+
+License: Mozilla Public License 2.0 (see ai-kit\certs\LICENSE-MPL-2.0)
+Updated: run build-usb.ps1 against this USB to re-fetch the latest bundle.
+'@
+}
+
+# ---------------------------------------------------------------- field-manual
+
+if ($DoomIncludeFieldmanual -eq 1) {
+    Write-Host ''
+    Write-Host '==> field-manual (public-domain corpus)'
+    $fmDest = Join-Path $Target 'field-manual'
+    if (-not (Test-Path (Join-Path $fmDest 'index.html'))) {
+        Copy-Item -Recurse (Join-Path $Repo 'field-manual') $fmDest -Force
+        Write-Host '  [done] field-manual corpus copied'
+    } else { Write-Host '  [skip] field-manual already present' }
+}
+
+# ---------------------------------------------------------------- v0.12 license copies
+
+if ($DoomIncludeDevtools -eq 1) {
+    $dtLicDir = Join-Path $Target 'ai-kit\devtools\LICENSES'
+    New-Item -ItemType Directory -Force $dtLicDir | Out-Null
+    if (Test-Path (Join-Path $Repo 'licenses\devtools-NOTICE.md'))  { Copy-Item (Join-Path $Repo 'licenses\devtools-NOTICE.md') (Join-Path $Target 'ai-kit\devtools\NOTICE.md') }
+    if (Test-Path (Join-Path $Repo 'licenses\devtools-LICENSES'))   { Copy-Item -Recurse (Join-Path $Repo 'licenses\devtools-LICENSES') $dtLicDir -Force }
+}
+# cacert is always-on
+if (Test-Path (Join-Path $Repo 'licenses\cacert-NOTICE.md'))       { Copy-Item (Join-Path $Repo 'licenses\cacert-NOTICE.md')       (Join-Path $CertsDir 'NOTICE.md') }
+if (Test-Path (Join-Path $Repo 'licenses\cacert-LICENSE-MPL-2.0')) { Copy-Item (Join-Path $Repo 'licenses\cacert-LICENSE-MPL-2.0') (Join-Path $CertsDir 'LICENSE-MPL-2.0') }
+
 # ---------------------------------------------------------------- launchers + dashboard
 
 Write-Host ''
@@ -1458,7 +1729,7 @@ Copy-Item -LiteralPath (Join-Path $Repo 'launchers\start.bat')     -Destination 
 Copy-Item -LiteralPath (Join-Path $Repo 'launchers\start.command') -Destination (Join-Path $Target 'start.command') -Force
 Copy-Item -LiteralPath (Join-Path $Repo 'launchers\start.sh')      -Destination (Join-Path $Target 'start.sh')      -Force
 
-foreach ($tool in @('whisper', 'wiki', 'ocr', 'docs', 'doom', 'embed', 'vault', 'img', 'passwords', 'ffmpeg')) {
+foreach ($tool in @('whisper', 'wiki', 'ocr', 'docs', 'doom', 'embed', 'vault', 'img', 'passwords', 'ffmpeg', 'devtools')) {
     foreach ($ext in @('bat', 'command', 'sh')) {
         Copy-Item -LiteralPath (Join-Path $Repo "launchers\start-$tool.$ext") `
                   -Destination (Join-Path $Target "start-$tool.$ext") -Force

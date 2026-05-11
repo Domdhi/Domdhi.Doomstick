@@ -179,7 +179,6 @@ This is a recipe — large binary artifacts (model weights, ISOs) live upstream 
 **What the kit does *not* ship** (BYO if you want them):
 
 - Bootable rescue ISOs (Ubuntu / SystemRescue / Hiren's BootCD PE) + [Ventoy](https://www.ventoy.net/)
-- Portable Windows tools (PortableGit, VS Code Portable, ripgrep, fzf, jq, 7-Zip)
 - Piper TTS (text → audio, completes the voice stack with whisperfile)
 
 These and more are tracked in [`docs/auxiliary-roadmap.md`](docs/auxiliary-roadmap.md) — most are one-line additions to the build script when you feel like it.
@@ -454,7 +453,7 @@ Expected on lower-powered hardware. sd.cpp loads fresh per invocation (no persis
 
 ## 📡 §09 · Auxiliary Equipment
 
-Twelve tools shipped from v0.4 through v0.10 — see [`docs/auxiliary-roadmap.md`](docs/auxiliary-roadmap.md) for the full living menu.
+Fifteen tools shipped from v0.4 through v0.12 — see [`docs/auxiliary-roadmap.md`](docs/auxiliary-roadmap.md) for the full living menu.
 
 **Now in the kit:**
 
@@ -474,6 +473,9 @@ Twelve tools shipped from v0.4 through v0.10 — see [`docs/auxiliary-roadmap.md
 | ✅ | **offline image generation** (v0.10) | ~5.0 GB | Per-OS `sd-cli` (stable-diffusion.cpp `master-596-90e87bc`) at `ai-kit/sd-img/{linux,mac,win}/` + FLUX.2 klein 4B Q4\_K\_M transformer GGUF (~2.43 GB) + small-decoder VAE safetensors (~238 MB) at `ai-kit/sd-img/models/` + Qwen3-4B Q4\_K\_M text encoder (~2.33 GB, doubles as AI core option) at `ai-kit/models/`. All Apache-2.0. Launcher `start-img.*` reads a prompt, writes a 1024×1024 PNG to the USB root. Standalone — no redbean coupling, no port. ~1-3 min per image on CPU; needs ~8-10 GB working RAM. Full guide: [`docs/img-guide.md`](docs/img-guide.md). |
 | ✅ | **KeePassXC password manager** (v0.11) | ~250 MB cross-OS | Per-OS KeePassXC 2.7.12 GUI binaries at `ai-kit/keepassxc/{linux,mac,win}/`. Launcher `start-passwords.*` opens the GUI directly against `passwords/vault.kdbx` on the USB. GPL-2.0+. Bundles: balanced + full. Full guide: [`docs/keepassxc-guide.md`](docs/keepassxc-guide.md). |
 | ✅ | **ffmpeg media toolkit** (v0.11) | ~210 MB cross-OS | Static ffmpeg n7.1 per-OS at `ai-kit/ffmpeg/{linux,mac,win}/`. Launcher `start-ffmpeg.*` primes PATH so `ffmpeg` resolves for the session. GPL-3.0+. Pairs with whisperfile for live captions and `sd-img` for animated outputs. Bundle: full-only. Full guide: [`docs/ffmpeg-guide.md`](docs/ffmpeg-guide.md). |
+| ✅ | **Portable dev tools** (v0.12) | ~280 MB cross-OS | ripgrep 14.1.1, fzf 0.61.3, jq 1.7.1, 7-Zip 2409, VSCodium 1.99.3 at `ai-kit/devtools/{linux,mac,win}/`. Launcher `start-devtools.*` primes PATH so all five tools resolve for the session. Mixed licenses: MIT (ripgrep, fzf, jq, VSCodium) + LGPL-2.1 (7-Zip). PortableGit deferred to v0.12.1. Bundle: balanced+full. Guide: `docs/devtools-guide.md`. |
+| ✅ | **Mozilla CA bundle** (v0.12) | ~226 KB | `cacert.pem` from curl.se/ca/cacert.pem at `ai-kit/certs/`. Always-on (no bundle toggle). Enables `curl --cacert ./cacert.pem` and `REQUESTS_CA_BUNDLE` on air-gapped USB. Refreshed on each build run. MPL-2.0. |
+| ✅ | **Field manual corpus** (v0.12) | ~240 KB committed | Six public-domain topic files at `field-manual/`: FM 21-76 survival, FEMA CERT first aid, edible plants, FCC Part 97 amateur radio, EPA well water, pre-1928 knots. Browse via `field-manual/index.html` (file://, mobile-friendly). All US Government works (PD per 17 U.S.C. § 105) + pre-1928 US Navy sources. 50 MB ceiling for user additions. Bundle: balanced+full. |
 
 **Still pending** (ranked by payoff):
 

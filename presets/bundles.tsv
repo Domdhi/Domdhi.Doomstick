@@ -13,7 +13,7 @@
 #
 # Schema (tab-delimited):
 #   name  label  e4b moe emb wiki osm whisper ocr docs redbean doom tts img
-#         passwords ffmpeg
+#         passwords ffmpeg devtools fieldmanual
 #         zim_idx osm_idx whisper_idx
 #         estimated_bytes  summary
 #
@@ -27,8 +27,10 @@
 # v0.11 adds passwords (KeePassXC GUI password manager, ~250 MB cross-OS,
 # GPL-2.0+) and ffmpeg (BtbN gpl + Martin-Riedl macOS, ~210 MB cross-OS,
 # GPL-3.0+). passwords is balanced+full; ffmpeg is full-only.
+# v0.12 adds devtools (ripgrep/fzf/jq/7-Zip/VSCodium, ~280 MB cross-OS, MIT+LGPL-2.1)
+# and fieldmanual (public-domain corpus, ~1 MB). Both are balanced+full.
 #
-# name	label	e4b	moe	emb	wiki	osm	whisper	ocr	docs	redbean	doom	tts	img	passwords	ffmpeg	zim_idx	osm_idx	whisper_idx	estimated_bytes	summary
-tiny	~5.4 GB — E4B + Simple Wikipedia, no maps or voice	1	0	0	1	0	0	0	0	0	0	0	0	0	0	1	0	0	5400000000	E4B + Simple Wikipedia. Smallest useful kit.
-balanced	~6.75 GB — E4B + Embed + Simple Wiki + Monaco maps + side-arms + redbean + DOOM + TTS + KeePassXC	1	0	1	1	1	1	1	1	1	1	1	0	1	0	1	1	2	6721000000	E4B + Embedding + Simple Wikipedia + Monaco placeholder maps + all side-arms + redbean + DOOM + TTS + KeePassXC password manager. Sensible default for a fresh USB.
-full	~29.1 GB — Everything (E4B + 26B + Embed + Qwen3-4B + side-arms + redbean + DOOM + TTS + image gen + KeePassXC + ffmpeg)	1	1	1	1	1	1	1	1	1	1	1	1	1	1	1	1	2	29124269594	All Gemma models + EmbeddingGemma + Qwen3-4B (image gen text encoder + 3rd AI core option) + all side-arms + redbean + DOOM + TTS + image gen + KeePassXC + ffmpeg. Matches today's --non-interactive defaults.
+# name	label	e4b	moe	emb	wiki	osm	whisper	ocr	docs	redbean	doom	tts	img	passwords	ffmpeg	devtools	fieldmanual	zim_idx	osm_idx	whisper_idx	estimated_bytes	summary
+tiny	~5.4 GB — E4B + Simple Wikipedia, no maps or voice	1	0	0	1	0	0	0	0	0	0	0	0	0	0	0	0	1	0	0	5400000000	E4B + Simple Wikipedia. Smallest useful kit.
+balanced	~7.03 GB — E4B + Embed + Simple Wiki + Monaco maps + side-arms + redbean + DOOM + TTS + KeePassXC + DevTools + Field manual	1	0	1	1	1	1	1	1	1	1	1	0	1	0	1	1	1	1	2	7002000000	E4B + Embedding + Simple Wikipedia + Monaco placeholder maps + all side-arms + redbean + DOOM + TTS + KeePassXC password manager + DevTools + Field manual. Sensible default for a fresh USB.
+full	~29.4 GB — Everything (E4B + 26B + Embed + Qwen3-4B + side-arms + redbean + DOOM + TTS + image gen + KeePassXC + ffmpeg + DevTools + Field manual)	1	1	1	1	1	1	1	1	1	1	1	1	1	1	1	1	1	1	2	29405269594	All Gemma models + EmbeddingGemma + Qwen3-4B (image gen text encoder + 3rd AI core option) + all side-arms + redbean + DOOM + TTS + image gen + KeePassXC + ffmpeg + DevTools + Field manual. Matches today's --non-interactive defaults.
