@@ -429,7 +429,7 @@ function Invoke-Wizard {
     }
 
     # 13. Dev tools — ripgrep + fzf + jq + 7-Zip + VSCodium
-    if (Read-YesNo 'Include portable dev tools (ripgrep, fzf, jq, 7-Zip, VSCodium, ~280 MB)?' 'Y') {
+    if (Read-YesNo 'Include portable dev tools (ripgrep, fzf, jq, 7-Zip, VSCodium + PortableGit on Windows, ~340 MB)?' 'Y') {
         $script:DoomIncludeDevtools = 1
     } else {
         $script:DoomIncludeDevtools = 0
@@ -464,7 +464,7 @@ function Get-EstimatedTotalBytes {
     if ($DoomIncludeImg -eq 1)     { $total += 2646469190 } # sd.cpp 3-OS (~42 MB) + FLUX.2 klein 4B Q4_K_M (~2.6 GB)
     if ($DoomIncludePasswords -eq 1) { $total += 250000000 } # KeePassXC 3-OS (~47 MB AppImage + ~36 MB dmg + ~35 MB zip + extracted)
     if ($DoomIncludeFfmpeg    -eq 1) { $total += 210000000 } # ffmpeg 3-OS (~117 MB linux64 + ~28 MB mac + ~157 MB win)
-    if ($DoomIncludeDevtools    -eq 1) { $total += 280000000 }  # devtools 5-tool cross-OS (VSCodium dominates ~240 MB)
+    if ($DoomIncludeDevtools    -eq 1) { $total += 339000000 }  # devtools 5-tool + PortableGit cross-OS (~280 MB tools + ~59 MB PortableGit)
     if ($DoomIncludeFieldmanual -eq 1) { $total += 1000000   }  # field-manual margin for user additions
     return $total
 }
@@ -1243,8 +1243,8 @@ $SevenZipLinuxUrl     = "https://github.com/ip7z/7zip/releases/download/$SevenZi
 $SevenZipLinuxBytes   = 1565344
 $SevenZipMacUrl       = "https://github.com/ip7z/7zip/releases/download/$SevenZipTag/7z$($SevenZipVersion)-mac.tar.xz"
 $SevenZipMacBytes     = 1867264
-$SevenZipWinUrl       = 'https://d.7-zip.org/a/7zr.exe'
-$SevenZipWinBytes     = 602112
+$SevenZipWinUrl       = "https://github.com/ip7z/7zip/releases/download/$SevenZipTag/7zr.exe"
+$SevenZipWinBytes     = 593408
 
 $VSCodiumVersion      = '1.99.32846'
 $VSCodiumLinuxUrl     = "https://github.com/VSCodium/vscodium/releases/download/$VSCodiumVersion/VSCodium-linux-x64-$VSCodiumVersion.tar.gz"
@@ -1253,6 +1253,13 @@ $VSCodiumMacUrl       = "https://github.com/VSCodium/vscodium/releases/download/
 $VSCodiumMacBytes     = 135527979
 $VSCodiumWinUrl       = "https://github.com/VSCodium/vscodium/releases/download/$VSCodiumVersion/VSCodium-win32-x64-$VSCodiumVersion.zip"
 $VSCodiumWinBytes     = 151132911
+
+# PortableGit (Windows) — git-for-windows portable, MIT+LGPL-2.0 composite.
+# Ships as a self-extracting .7z.exe; start-devtools.bat extracts to devtools\win\git\ on first run.
+$PortableGitVersion   = '2.54.0'
+$PortableGitTag       = '2.54.0.windows.1'
+$PortableGitUrl       = "https://github.com/git-for-windows/git/releases/download/v$PortableGitTag/PortableGit-$PortableGitVersion-64-bit.7z.exe"
+$PortableGitBytes     = 58995352
 
 $CacertUrl            = 'https://curl.se/ca/cacert.pem'
 $CacertBytes          = 226168
@@ -1668,6 +1675,12 @@ if ($DoomIncludeDevtools -eq 1) {
         New-Item -ItemType Directory -Force (Join-Path $vscWinDir 'data') | Out-Null
         Remove-Item $tmp -Force -ErrorAction SilentlyContinue
     } else { Write-Host '  [skip] VSCodium windows already present' }
+
+    # PortableGit (Windows) — ship self-extractor; start-devtools.bat extracts on first run
+    $pgDest = Join-Path $DevtoolsWinDir 'PortableGit.7z.exe'
+    if (-not (Test-Path $pgDest)) {
+        Get-File -Url $PortableGitUrl -Dest $pgDest -Expected $PortableGitBytes -Label "PortableGit $PortableGitVersion (Windows self-extractor)"
+    } else { Write-Host '  [skip] PortableGit already present' }
 }
 
 # ---------------------------------------------------------------- certs (always-on)

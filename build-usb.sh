@@ -532,8 +532,8 @@ run_wizard() {
     DOOM_INCLUDE_FFMPEG=0
   fi
 
-  # 13. Dev tools — ripgrep, fzf, jq, 7-Zip, VSCodium cross-OS (~280 MB)
-  if prompt_yes_no "Include portable dev tools (ripgrep, fzf, jq, 7-Zip, VSCodium, ~280 MB)?" "Y"; then
+  # 13. Dev tools — ripgrep, fzf, jq, 7-Zip, VSCodium cross-OS + PortableGit on Windows (~340 MB)
+  if prompt_yes_no "Include portable dev tools (ripgrep, fzf, jq, 7-Zip, VSCodium + PortableGit on Windows, ~340 MB)?" "Y"; then
     DOOM_INCLUDE_DEVTOOLS=1
   else
     DOOM_INCLUDE_DEVTOOLS=0
@@ -571,7 +571,7 @@ estimate_total_bytes() {
   [ "${DOOM_INCLUDE_IMG:-0}" = "1" ]       && total=$((total + 2646469190)) # sd.cpp 3-OS (42 MB) + FLUX.2 klein 4B Q4_K_M (~2.6 GB)
   [ "${DOOM_INCLUDE_PASSWORDS:-0}" = "1" ] && total=$((total + 250000000))  # KeePassXC 3-OS (~47 MB AppImage + ~36 MB dmg + ~35 MB zip + extracted)
   [ "${DOOM_INCLUDE_FFMPEG:-0}" = "1" ]    && total=$((total + 210000000))  # ffmpeg 3-OS (~117 MB linux64 + ~28 MB mac + ~157 MB win)
-  [ "${DOOM_INCLUDE_DEVTOOLS:-0}" = "1" ]    && total=$((total + 280000000))  # devtools 5-tool cross-OS (dominated by VSCodium ~240 MB)
+  [ "${DOOM_INCLUDE_DEVTOOLS:-0}" = "1" ]    && total=$((total + 339000000))  # devtools 5-tool + PortableGit cross-OS (~280 MB tools + ~59 MB PortableGit)
   [ "${DOOM_INCLUDE_FIELDMANUAL:-0}" = "1" ] && total=$((total + 1000000))    # field-manual margin for user additions
   printf '%s' "$total"
 }
@@ -1175,7 +1175,7 @@ JQ_WIN_URL="https://github.com/jqlang/jq/releases/download/jq-${JQ_VERSION}/jq-w
 JQ_WIN_BYTES=2097152
 
 # 7-Zip — cross-OS archiver (LGPL-2.1 / BSD). 7zzs = static (Linux), 7zz (macOS), 7zr.exe (Windows minimal).
-# Linux + macOS archives are on GitHub (ip7z/7zip); 7zr.exe single-file at d.7-zip.org.
+# All three hosted on GitHub (ip7z/7zip) at the same versioned tag.
 # SEVENZIP_TAG derives the GitHub release tag (24.09) from the version string (2409).
 SEVENZIP_VERSION="2409"
 SEVENZIP_TAG="${SEVENZIP_VERSION:0:2}.${SEVENZIP_VERSION:2}"
@@ -1183,8 +1183,8 @@ SEVENZIP_LINUX_URL="https://github.com/ip7z/7zip/releases/download/${SEVENZIP_TA
 SEVENZIP_LINUX_BYTES=1565344
 SEVENZIP_MAC_URL="https://github.com/ip7z/7zip/releases/download/${SEVENZIP_TAG}/7z${SEVENZIP_VERSION}-mac.tar.xz"
 SEVENZIP_MAC_BYTES=1867264
-SEVENZIP_WIN_7ZR_URL="https://d.7-zip.org/a/7zr.exe"
-SEVENZIP_WIN_7ZR_BYTES=602112
+SEVENZIP_WIN_7ZR_URL="https://github.com/ip7z/7zip/releases/download/${SEVENZIP_TAG}/7zr.exe"
+SEVENZIP_WIN_7ZR_BYTES=593408
 
 # VSCodium — cross-OS open-source VS Code build (MIT). Electron app; ~130-150 MB per OS.
 # Portable mode activated by creating a data/ dir next to the binary.
@@ -1196,6 +1196,13 @@ VSCODIUM_MAC_URL="https://github.com/VSCodium/vscodium/releases/download/${VSCOD
 VSCODIUM_MAC_BYTES=135527979
 VSCODIUM_WIN_URL="https://github.com/VSCodium/vscodium/releases/download/${VSCODIUM_VERSION}/VSCodium-win32-x64-${VSCODIUM_VERSION}.zip"
 VSCODIUM_WIN_BYTES=151132911
+
+# PortableGit (Windows only) — git-for-windows portable, MIT+LGPL-2.0 composite.
+# Ships as a self-extracting .7z.exe; start-devtools.bat extracts to devtools/win/git/ on first run.
+PORTABLEGIT_VERSION="2.54.0"
+PORTABLEGIT_TAG="2.54.0.windows.1"
+PORTABLEGIT_URL="https://github.com/git-for-windows/git/releases/download/v${PORTABLEGIT_TAG}/PortableGit-${PORTABLEGIT_VERSION}-64-bit.7z.exe"
+PORTABLEGIT_BYTES=58995352
 
 # Mozilla CA certificate bundle (MPL-2.0). Always-on; used by curl/Python/Git on the USB.
 CACERT_URL="https://curl.se/ca/cacert.pem"
@@ -1656,6 +1663,13 @@ if [ "${DOOM_INCLUDE_DEVTOOLS:-0}" = "1" ]; then
     fi
   else
     echo "  [skip] VSCodium windows already present"
+  fi
+
+  # PortableGit (Windows) — ship self-extractor; start-devtools.bat extracts on first run
+  if [ ! -f "$TARGET/ai-kit/devtools/win/PortableGit.7z.exe" ]; then
+    fetch "$PORTABLEGIT_URL" "$TARGET/ai-kit/devtools/win/PortableGit.7z.exe" "$PORTABLEGIT_BYTES" "PortableGit ${PORTABLEGIT_VERSION} (Windows self-extractor)"
+  else
+    echo "  [skip] PortableGit already present"
   fi
 fi
 
