@@ -1154,14 +1154,14 @@ RIPGREP_WIN_BYTES=2621440
 
 # fzf — cross-OS fuzzy finder (MIT). Single binary per OS.
 FZF_VERSION="0.61.3"
-FZF_LINUX64_URL="https://github.com/junegunn/fzf/releases/download/${FZF_VERSION}/fzf-${FZF_VERSION}-linux_amd64.tar.gz"
-FZF_LINUX64_BYTES=3670016
-FZF_LINUXARM64_URL="https://github.com/junegunn/fzf/releases/download/${FZF_VERSION}/fzf-${FZF_VERSION}-linux_arm64.tar.gz"
-FZF_LINUXARM64_BYTES=3670016
-FZF_MAC_URL="https://github.com/junegunn/fzf/releases/download/${FZF_VERSION}/fzf-${FZF_VERSION}-darwin_arm64.tar.gz"
-FZF_MAC_BYTES=3670016
-FZF_WIN_URL="https://github.com/junegunn/fzf/releases/download/${FZF_VERSION}/fzf-${FZF_VERSION}-windows_amd64.zip"
-FZF_WIN_BYTES=3670016
+FZF_LINUX64_URL="https://github.com/junegunn/fzf/releases/download/v${FZF_VERSION}/fzf-${FZF_VERSION}-linux_amd64.tar.gz"
+FZF_LINUX64_BYTES=1608889
+FZF_LINUXARM64_URL="https://github.com/junegunn/fzf/releases/download/v${FZF_VERSION}/fzf-${FZF_VERSION}-linux_arm64.tar.gz"
+FZF_LINUXARM64_BYTES=1493628
+FZF_MAC_URL="https://github.com/junegunn/fzf/releases/download/v${FZF_VERSION}/fzf-${FZF_VERSION}-darwin_arm64.tar.gz"
+FZF_MAC_BYTES=1628690
+FZF_WIN_URL="https://github.com/junegunn/fzf/releases/download/v${FZF_VERSION}/fzf-${FZF_VERSION}-windows_amd64.zip"
+FZF_WIN_BYTES=1832326
 
 # jq — cross-OS JSON processor (MIT). Single-file binary, no archive.
 JQ_VERSION="1.7.1"

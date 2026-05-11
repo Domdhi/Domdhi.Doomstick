@@ -1218,14 +1218,14 @@ $RipgrepWinUrl        = "https://github.com/BurntSushi/ripgrep/releases/download
 $RipgrepWinBytes      = 2621440
 
 $FzfVersion           = '0.61.3'
-$FzfLinux64Url        = "https://github.com/junegunn/fzf/releases/download/$FzfVersion/fzf-$FzfVersion-linux_amd64.tar.gz"
-$FzfLinux64Bytes      = 3670016
-$FzfLinuxArm64Url     = "https://github.com/junegunn/fzf/releases/download/$FzfVersion/fzf-$FzfVersion-linux_arm64.tar.gz"
-$FzfLinuxArm64Bytes   = 3670016
-$FzfMacUrl            = "https://github.com/junegunn/fzf/releases/download/$FzfVersion/fzf-$FzfVersion-darwin_arm64.tar.gz"
-$FzfMacBytes          = 3670016
-$FzfWinUrl            = "https://github.com/junegunn/fzf/releases/download/$FzfVersion/fzf-$FzfVersion-windows_amd64.zip"
-$FzfWinBytes          = 3670016
+$FzfLinux64Url        = "https://github.com/junegunn/fzf/releases/download/v$FzfVersion/fzf-$FzfVersion-linux_amd64.tar.gz"
+$FzfLinux64Bytes      = 1608889
+$FzfLinuxArm64Url     = "https://github.com/junegunn/fzf/releases/download/v$FzfVersion/fzf-$FzfVersion-linux_arm64.tar.gz"
+$FzfLinuxArm64Bytes   = 1493628
+$FzfMacUrl            = "https://github.com/junegunn/fzf/releases/download/v$FzfVersion/fzf-$FzfVersion-darwin_arm64.tar.gz"
+$FzfMacBytes          = 1628690
+$FzfWinUrl            = "https://github.com/junegunn/fzf/releases/download/v$FzfVersion/fzf-$FzfVersion-windows_amd64.zip"
+$FzfWinBytes          = 1832326
 
 $JqVersion            = '1.7.1'
 $JqLinux64Url         = "https://github.com/jqlang/jq/releases/download/jq-$JqVersion/jq-linux-amd64"
